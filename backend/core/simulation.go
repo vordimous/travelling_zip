@@ -104,6 +104,70 @@ func (zipScheduler *ZipScheduler) QueueOrder(order Order) {
 	zipScheduler.unfulfilledOrders = append(zipScheduler.unfulfilledOrders, order)
 }
 
+// buildFlight assembles at most one Flight from candidates, walking them in
+// order and packing each order onto the flight when it fits.
+//
+// Packing rules:
+//   - Multiple orders to the same hospital share a single stop (one delivery
+//     leg per unique hospital, but the flight still carries N packages).
+//   - The total number of packages cannot exceed MaxPackagesPerZip.
+//   - The cumulative route distance (Nest → stops → Nest) cannot exceed
+//     ZipMaxCumulativeRangeM. The route is the order in which unique hospitals
+//     are first visited; route reordering belongs to P4.
+//
+// Returns the constructed flight (empty when nothing fits) and the candidates
+// that were not consumed, in their original order. Skipped orders precede
+// candidates that come after the first non-fit so callers can re-queue them.
+func (zipScheduler *ZipScheduler) buildFlight(currentTime int, candidates []Order) (Flight, []Order) {
+	stops := []string{}
+	stopIndex := map[string]bool{}
+	orderIDs := []string{}
+	leftover := make([]Order, 0, len(candidates))
+
+	for _, order := range candidates {
+		if len(orderIDs) >= zipScheduler.maxPackagesPerZip {
+			leftover = append(leftover, order)
+			continue
+		}
+
+		candidateStops := stops
+		if !stopIndex[order.HospitalName] {
+			candidateStops = append(append([]string{}, stops...), order.HospitalName)
+		}
+		if zipScheduler.routeDistance(candidateStops) > float64(zipScheduler.zipMaxCumulativeRangeM) {
+			leftover = append(leftover, order)
+			continue
+		}
+
+		if !stopIndex[order.HospitalName] {
+			stops = candidateStops
+			stopIndex[order.HospitalName] = true
+		}
+		orderIDs = append(orderIDs, order.ID)
+	}
+
+	if len(orderIDs) == 0 {
+		return Flight{}, leftover
+	}
+	return Flight{
+		LaunchTime:    currentTime,
+		HospitalNames: stops,
+		OrderIDs:      orderIDs,
+	}, leftover
+}
+
+// routeDistance returns the cumulative meters for a route Nest → stops → Nest.
+func (zipScheduler *ZipScheduler) routeDistance(stops []string) float64 {
+	previous := NestKey
+	total := 0.0
+	for _, stop := range stops {
+		total += zipScheduler.graph.EdgeWeight(previous, stop)
+		previous = stop
+	}
+	total += zipScheduler.graph.EdgeWeight(previous, NestKey)
+	return total
+}
+
 // pendingByPriority returns the pending unfulfilled orders ordered Emergency
 // before Resupply, with FIFO order preserved within each priority. The result
 // is a fresh slice; the underlying queue is unchanged.

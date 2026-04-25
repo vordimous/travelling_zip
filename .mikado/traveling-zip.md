@@ -33,7 +33,7 @@ graph TD
 
   SCHED --> P1[Track fleet availability via zip return times ✓]
   SCHED --> P2[Order pending queue by Emergency-before-Resupply ✓]
-  SCHED --> P3[Build a flight: collapse duplicate stops, cap at MaxPackages, enforce range]
+  SCHED --> P3[Build a flight: collapse duplicate stops, cap at MaxPackages, enforce range ✓]
   SCHED --> P4[Multi-stop route ordering nearest-neighbor over graph]
   SCHED --> P5[20/80 reserve policy with EoD-deadline override for Resupply]
   P1 --> T1S1[Unit test: fleet capacity never exceeded]
@@ -69,7 +69,7 @@ graph TD
 
 - [x] **P1**: Track fleet availability — `zipReturnTimes` slice; `availableZips(currentTime)` reclaims returned zips. Naive proved this is required to avoid over-launching.
 - [x] **P2**: Sort/partition pending orders so Emergency is considered before Resupply.
-- [ ] **P3**: Flight builder that (a) collapses duplicate hospitals into one stop with N packages, (b) caps stops by MaxPackagesPerZip total packages, (c) rejects routes exceeding `zipMaxCumulativeRangeM`.
+- [x] **P3**: Flight builder that (a) collapses duplicate hospitals into one stop with N packages, (b) caps stops by MaxPackagesPerZip total packages, (c) rejects routes exceeding `zipMaxCumulativeRangeM`.
 - [ ] **P4**: Multi-stop route ordering using nearest-neighbor traversal over the graph (improvement on FIFO).
 - [ ] **P5**: 20/80 fleet reserve — cap concurrent Resupply launches at 80% of fleet, but allow borrowing the reserve when a Resupply order risks missing its EoD deadline. Define "EoD risk" precisely (e.g., distance/speed time-to-deliver > seconds-remaining-in-day).
 - [ ] **T1S1..T1S4**: Targeted unit tests per behavior above.
