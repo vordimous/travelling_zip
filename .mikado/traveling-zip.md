@@ -34,7 +34,7 @@ graph TD
   SCHED --> P1[Track fleet availability via zip return times ✓]
   SCHED --> P2[Order pending queue by Emergency-before-Resupply ✓]
   SCHED --> P3[Build a flight: collapse duplicate stops, cap at MaxPackages, enforce range ✓]
-  SCHED --> P4[Multi-stop route ordering nearest-neighbor over graph]
+  SCHED --> P4[Multi-stop route ordering nearest-neighbor over graph ✓]
   SCHED --> P5[20/80 reserve policy with EoD-deadline override for Resupply]
   P1 --> T1S1[Unit test: fleet capacity never exceeded]
   P2 --> T1S2[Unit test: priority ordering observed]
@@ -70,7 +70,7 @@ graph TD
 - [x] **P1**: Track fleet availability — `zipReturnTimes` slice; `availableZips(currentTime)` reclaims returned zips. Naive proved this is required to avoid over-launching.
 - [x] **P2**: Sort/partition pending orders so Emergency is considered before Resupply.
 - [x] **P3**: Flight builder that (a) collapses duplicate hospitals into one stop with N packages, (b) caps stops by MaxPackagesPerZip total packages, (c) rejects routes exceeding `zipMaxCumulativeRangeM`.
-- [ ] **P4**: Multi-stop route ordering using nearest-neighbor traversal over the graph (improvement on FIFO).
+- [x] **P4**: Multi-stop route ordering using nearest-neighbor traversal over the graph (improvement on FIFO).
 - [ ] **P5**: 20/80 fleet reserve — cap concurrent Resupply launches at 80% of fleet, but allow borrowing the reserve when a Resupply order risks missing its EoD deadline. Define "EoD risk" precisely (e.g., distance/speed time-to-deliver > seconds-remaining-in-day).
 - [ ] **T1S1..T1S4**: Targeted unit tests per behavior above.
 - [ ] **T1I**: Integration test running full `orders.csv` through the simulator; asserts 0 unfulfilled, no flight exceeds range, never more than `numZips` concurrent flights, Emergency mean delay < Resupply mean delay.
@@ -101,3 +101,4 @@ graph TD
 - **Naive observation**: multi-order-same-hospital trips emit duplicate consecutive stops; flight builder must dedupe stops while still tracking N packages per stop.
 - **Naive observation**: time conversion is `dist / speedMps` (m / (m/s) = s) — int truncation is fine for second-resolution simulation but worth noting in the scheduler comment.
 - All interaction with code goes through `make` targets (per user direction); no direct `go build`/`go test` calls.
+- **P4 experiment**: across all 1330 three-stop combinations of the 21 hospitals, NN gives avg route 188km vs FIFO 203km (and optimal 185km). NN matches optimal in 57% of combos and shrinks the over-160km set from 1021 to 944. NN sits inside `buildFlight`'s range gate so flights that fit only when reordered are not rejected.
