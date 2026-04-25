@@ -36,7 +36,7 @@ graph TD
   SCHED --> P3[Build a flight: collapse duplicate stops, cap at MaxPackages, enforce range ✓]
   SCHED --> P4[Multi-stop route ordering nearest-neighbor over graph ✓]
   SCHED --> P5[20/80 reserve policy with EoD-deadline override for Resupply ✓]
-  P1 --> T1S1[Unit test: fleet capacity never exceeded]
+  P1 --> T1S1[Unit test: fleet capacity never exceeded ✓]
   P2 --> T1S2[Unit test: priority ordering observed]
   P3 --> T1S3[Unit test: range gating, dedupe, MaxPackages cap]
   P5 --> T1S4[Unit test: 20/80 reserve + deadline override]
@@ -72,7 +72,8 @@ graph TD
 - [x] **P3**: Flight builder that (a) collapses duplicate hospitals into one stop with N packages, (b) caps stops by MaxPackagesPerZip total packages, (c) rejects routes exceeding `zipMaxCumulativeRangeM`.
 - [x] **P4**: Multi-stop route ordering using nearest-neighbor traversal over the graph (improvement on FIFO).
 - [x] **P5**: 20/80 fleet reserve — cap concurrent Resupply launches at 80% of fleet, but allow borrowing the reserve when a Resupply order risks missing its EoD deadline. EoD risk threshold: round-trip direct flight time > seconds remaining in day. Default policy is `ReserveSoft`. Also wires `LaunchFlights` end-to-end.
-- [ ] **T1S1..T1S4**: Targeted unit tests per behavior above.
+- [x] **T1S1**: Unit test for fleet capacity (availableZips reclaim, LaunchFlights respects fleet size).
+- [ ] **T1S2..T1S4**: Targeted unit tests per remaining behavior above.
 - [x] **T1I**: Integration test running full `orders.csv` through the simulator; asserts 0 unfulfilled, no flight exceeds range, never more than `numZips` concurrent flights, Emergency mean delay < Resupply mean delay.
 
 ### Step 2a — Configurable routing
