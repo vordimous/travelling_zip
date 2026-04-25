@@ -69,6 +69,83 @@ func TestLaunchFlightsRespectsFleetSize(t *testing.T) {
 	}
 }
 
+// fleetUnderReserveStress sets up a scheduler with 5 zips of which 4 are
+// already in flight at currentTime=0, leaving exactly one free zip and a
+// reserve size of one (5*80/100=4 cap → 1 reserved). A single Resupply order
+// to "Near" is queued. The fixture isolates the reserve gating decision.
+func fleetUnderReserveStress(t *testing.T, policy ReservePolicy) *ZipScheduler {
+	t.Helper()
+	hospitals := map[string]Hospital{
+		"Near": {Name: "Near", NorthM: 1000, EastM: 0},
+	}
+	scheduler := NewZipScheduler(hospitals, SimulationConfig{
+		NumZips:                5,
+		MaxPackagesPerZip:      3,
+		ZipSpeedMps:            30,
+		ZipMaxCumulativeRangeM: 160000,
+	})
+	scheduler.reservePolicy = policy
+	for i := 0; i < 4; i++ {
+		scheduler.markZipLaunched(1000)
+	}
+	scheduler.QueueOrder(Order{ID: "r1", Time: 0, HospitalName: "Near", Priority: Resupply})
+	return scheduler
+}
+
+func TestReserveHardBlocksResupplyWhenOnlyReserveFree(t *testing.T) {
+	scheduler := fleetUnderReserveStress(t, ReserveHard)
+	flights := scheduler.LaunchFlights(0)
+	if len(flights) != 0 {
+		t.Errorf("ReserveHard launched %d flights with only the reserve free; want 0",
+			len(flights))
+	}
+	if got := len(scheduler.UnfulfilledOrders()); got != 1 {
+		t.Errorf("Resupply queue size after blocked launch = %d, want 1", got)
+	}
+}
+
+func TestReserveNoneLaunchesResupplyEvenIntoReserve(t *testing.T) {
+	scheduler := fleetUnderReserveStress(t, ReserveNone)
+	flights := scheduler.LaunchFlights(0)
+	if len(flights) != 1 {
+		t.Errorf("ReserveNone launched %d flights, want 1", len(flights))
+	}
+}
+
+// At t = SecondsPerDay - 30 the seconds-remaining (30) is less than the round
+// trip flight time to Near (~66 s), so resupplyAtRisk fires and the Soft
+// policy permits borrowing the reserve.
+func TestReserveSoftBorrowsReserveOnEoDRisk(t *testing.T) {
+	scheduler := fleetUnderReserveStress(t, ReserveSoft)
+	flights := scheduler.LaunchFlights(SecondsPerDay - 30)
+	if len(flights) != 1 {
+		t.Errorf("ReserveSoft did not borrow reserve at EoD: launched %d, want 1",
+			len(flights))
+	}
+}
+
+// Earlier in the day the at-risk threshold does not fire; Soft behaves like
+// Hard and blocks Resupply.
+func TestReserveSoftBlocksResupplyWhenNotAtRisk(t *testing.T) {
+	scheduler := fleetUnderReserveStress(t, ReserveSoft)
+	flights := scheduler.LaunchFlights(0)
+	if len(flights) != 0 {
+		t.Errorf("ReserveSoft launched %d flights at t=0; want 0 (not at risk)",
+			len(flights))
+	}
+}
+
+func TestResupplyAtRiskThreshold(t *testing.T) {
+	scheduler := fleetUnderReserveStress(t, ReserveSoft)
+	order := Order{HospitalName: "Near"}
+	if scheduler.resupplyAtRisk(0, order) {
+		t.Error("resupplyAtRisk(t=0) = true, want false")
+	}
+	if !scheduler.resupplyAtRisk(SecondsPerDay-10, order) {
+		t.Error("resupplyAtRisk(near midnight) = false, want true")
+	}
+}
+
 // schedulerWithRange returns a scheduler with the test hospitals and a custom
 // cumulative range (in meters). Used to make range gating observable in
 // small, deterministic tests.
