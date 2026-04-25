@@ -27,7 +27,7 @@ graph TD
 
   S1 --> G1[Build delivery graph type Nest+hospitals, Euclidean edges ✓]
   S1 --> SCHED[Scheduler logic on top of graph ✓]
-  S1 --> T1I[Integration test: full orders.csv fulfilled, no constraint violations]
+  S1 --> T1I[Integration test: full orders.csv fulfilled, no constraint violations ✓]
 
   G1 --> T1G[Unit tests: graph nodes, edge weights, symmetry ✓]
 
@@ -73,7 +73,7 @@ graph TD
 - [x] **P4**: Multi-stop route ordering using nearest-neighbor traversal over the graph (improvement on FIFO).
 - [x] **P5**: 20/80 fleet reserve — cap concurrent Resupply launches at 80% of fleet, but allow borrowing the reserve when a Resupply order risks missing its EoD deadline. EoD risk threshold: round-trip direct flight time > seconds remaining in day. Default policy is `ReserveSoft`. Also wires `LaunchFlights` end-to-end.
 - [ ] **T1S1..T1S4**: Targeted unit tests per behavior above.
-- [ ] **T1I**: Integration test running full `orders.csv` through the simulator; asserts 0 unfulfilled, no flight exceeds range, never more than `numZips` concurrent flights, Emergency mean delay < Resupply mean delay.
+- [x] **T1I**: Integration test running full `orders.csv` through the simulator; asserts 0 unfulfilled, no flight exceeds range, never more than `numZips` concurrent flights, Emergency mean delay < Resupply mean delay.
 
 ### Step 2a — Configurable routing
 
