@@ -17,6 +17,10 @@ run-simulator: ## Run the Go CLI simulator
 build-backend: ## Compile Go binary → backend/bin/api
 	cd backend && go build -o bin/api ./cmd/api
 
+.PHONY: vet-backend
+vet-backend: ## Run go vet on backend
+	cd backend && go vet ./...
+
 .PHONY: test-backend
 test-backend: ## Run Go tests
 	cd backend && go test ./...
@@ -26,8 +30,12 @@ test-frontend: ## Run frontend tests (Vitest)
 	cd frontend && npm test
 
 .PHONY: install-frontend
-install-frontend: ## npm install in frontend/
+install-frontend: ## npm install in frontend/ (dev)
 	cd frontend && npm install
+
+.PHONY: ci-install-frontend
+ci-install-frontend: ## npm ci in frontend/ (CI — clean reproducible install)
+	cd frontend && npm ci
 
 .PHONY: run-frontend
 run-frontend: ## Start Vite dev server (port 5173)

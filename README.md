@@ -26,7 +26,7 @@ Open <http://localhost:5173>.
 
 ## Project Structure
 
-```
+```text
 backend/         Go module (travelingzip)
   cmd/api/         HTTP REST server
   cmd/simulator/   CLI batch runner
@@ -44,14 +44,16 @@ frontend/        React 19 + Vite 8 single-page app
 
 ## Makefile Targets
 
-| Command                 | Description                    |
-|-------------------------|--------------------------------|
-| `make run-backend`      | Go API on port 3001            |
-| `make run-frontend`     | Vite dev server on port 5173   |
-| `make run-simulator`    | CLI simulator one-shot         |
-| `make install-frontend` | `npm install` in `frontend/`   |
-| `make build`            | Compile backend + frontend     |
-| `make test`             | Run all tests (Go + frontend)  |
-| `make test-backend`     | Run Go tests only              |
-| `make test-frontend`    | Run frontend tests (Vitest)    |
-| `make help`             | List all targets               |
+| Command                    | Description                         |
+|----------------------------|-------------------------------------|
+| `make run-backend`         | Go API on port 3001                 |
+| `make run-frontend`        | Vite dev server on port 5173        |
+| `make run-simulator`       | CLI simulator one-shot              |
+| `make install-frontend`    | `npm install` in `frontend/` (dev)  |
+| `make ci-install-frontend` | `npm ci` in `frontend/` (CI)        |
+| `make build`               | Compile backend + frontend          |
+| `make test`                | Run all tests (Go + frontend)       |
+| `make vet-backend`         | Run `go vet` on backend             |
+| `make test-backend`        | Run Go tests only                   |
+| `make test-frontend`       | Run frontend tests (Vitest)         |
+| `make help`                | List all targets                    |
