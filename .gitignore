@@ -1,0 +1,21 @@
+# macOS
+.DS_Store
+
+# Go
+backend/bin/
+backend/coverage.out
+*.out
+*.test
+
+# Node / Frontend
+frontend/node_modules/
+frontend/dist/
+frontend/.vite/
+
+# Logs
+*.log
+
+# Editors
+.idea/
+.vscode/
+*.swp
