@@ -21,6 +21,10 @@ build-backend: ## Compile Go binary → backend/bin/api
 test-backend: ## Run Go tests
 	cd backend && go test ./...
 
+.PHONY: test-frontend
+test-frontend: ## Run frontend tests (Vitest)
+	cd frontend && npm test
+
 .PHONY: install-frontend
 install-frontend: ## npm install in frontend/
 	cd frontend && npm install
@@ -37,4 +41,4 @@ build-frontend: ## Vite production build → frontend/dist/
 build: build-backend build-frontend ## Build both backend and frontend
 
 .PHONY: test
-test: test-backend ## Run all tests
+test: test-backend test-frontend ## Run all tests
