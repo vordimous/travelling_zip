@@ -73,6 +73,7 @@ type Snapshot struct {
 
 type ZipScheduler struct {
 	hospitals              map[string]Hospital
+	graph                  *Graph
 	numZips                int
 	maxPackagesPerZip      int
 	zipSpeedMps            int
@@ -86,6 +87,7 @@ func NewZipScheduler(
 ) *ZipScheduler {
 	return &ZipScheduler{
 		hospitals:              hospitals,
+		graph:                  NewGraph(hospitals),
 		numZips:                config.NumZips,
 		maxPackagesPerZip:      config.MaxPackagesPerZip,
 		zipSpeedMps:            config.ZipSpeedMps,

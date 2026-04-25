@@ -5,7 +5,7 @@
 **Plan:** /Users/adanelz/.claude/plans/rustling-knitting-squid.md
 **Build:** `make build-backend`
 **Test:** `make test`
-**Commit strategy:** unset
+**Commit strategy:** folded
 **Base commit:** d3d128caa73ff02ee65d5e91eb964d05de464dc8
 
 ## Status
@@ -20,7 +20,7 @@ graph TD
   G --> S2a[Step 2a: pluggable edge-weight model + config knob]
   G --> S2b[Step 2b: pre-launch flight-path visualization]
 
-  S1 --> G1[Build delivery graph type Nest+hospitals, Euclidean edges]
+  S1 --> G1[Build delivery graph type Nest+hospitals, Euclidean edges ✓]
   S1 --> SCHED[Scheduler logic on top of graph]
   S1 --> T1I[Integration test: full orders.csv fulfilled, no constraint violations]
 
@@ -56,7 +56,7 @@ graph TD
 ## Prerequisites
 
 ### Step 1 — Foundation
-- [ ] **G1**: Introduce `Graph` type (Nest + hospital nodes; symmetric Euclidean edges) in a new file under `backend/core/`. Goal is a real type, not just a distance map.
+- [x] **G1**: Introduce `Graph` type (Nest + hospital nodes; symmetric Euclidean edges) in a new file under `backend/core/`. Goal is a real type, not just a distance map.
 - [ ] **T1G**: Unit tests for graph (node set = Nest + 21 hospitals, edge weights match Euclidean, symmetric edges).
 
 ### Step 1 — Scheduler
