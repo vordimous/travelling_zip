@@ -69,6 +69,91 @@ func TestLaunchFlightsRespectsFleetSize(t *testing.T) {
 	}
 }
 
+// schedulerWithRange returns a scheduler with the test hospitals and a custom
+// cumulative range (in meters). Used to make range gating observable in
+// small, deterministic tests.
+func schedulerWithRange(rangeM int, maxPackages int) *ZipScheduler {
+	hospitals := map[string]Hospital{
+		"Near": {Name: "Near", NorthM: 1000, EastM: 0},
+		"Mid":  {Name: "Mid", NorthM: 5000, EastM: 0},
+		"Far":  {Name: "Far", NorthM: 20000, EastM: 0},
+	}
+	return NewZipScheduler(hospitals, SimulationConfig{
+		NumZips:                1,
+		MaxPackagesPerZip:      maxPackages,
+		ZipSpeedMps:            30,
+		ZipMaxCumulativeRangeM: rangeM,
+	})
+}
+
+func TestBuildFlightRejectsOrdersBeyondRange(t *testing.T) {
+	// With range = 30 km, a Far (20 km out) round trip is 40 km — over range
+	// alone — and combining Far with anything else makes the route worse.
+	// Near + Mid together is 10 km and must fit.
+	scheduler := schedulerWithRange(30000, 3)
+	candidates := []Order{
+		{ID: "n", Time: 0, HospitalName: "Near", Priority: Emergency},
+		{ID: "m", Time: 0, HospitalName: "Mid", Priority: Emergency},
+		{ID: "f", Time: 0, HospitalName: "Far", Priority: Emergency},
+	}
+
+	flight, leftover := scheduler.buildFlight(0, candidates)
+
+	if len(flight.OrderIDs) != 2 {
+		t.Errorf("flight orderIDs = %v, want 2 (Near + Mid)", flight.OrderIDs)
+	}
+	stops := map[string]bool{}
+	for _, s := range flight.HospitalNames {
+		stops[s] = true
+	}
+	if stops["Far"] {
+		t.Errorf("flight should not include Far (over range): stops=%v", flight.HospitalNames)
+	}
+	if len(leftover) != 1 || leftover[0].ID != "f" {
+		t.Errorf("leftover = %v, want [f]", leftover)
+	}
+}
+
+func TestBuildFlightCollapsesDuplicateStops(t *testing.T) {
+	scheduler := schedulerWithRange(160000, 3)
+	candidates := []Order{
+		{ID: "a", Time: 0, HospitalName: "Near", Priority: Resupply},
+		{ID: "b", Time: 0, HospitalName: "Near", Priority: Resupply},
+		{ID: "c", Time: 0, HospitalName: "Near", Priority: Resupply},
+	}
+
+	flight, leftover := scheduler.buildFlight(0, candidates)
+
+	if len(flight.HospitalNames) != 1 || flight.HospitalNames[0] != "Near" {
+		t.Errorf("hospitalNames = %v, want [Near] (duplicates collapsed)", flight.HospitalNames)
+	}
+	if len(flight.OrderIDs) != 3 {
+		t.Errorf("orderIDs = %v, want 3 packages on the single stop", flight.OrderIDs)
+	}
+	if len(leftover) != 0 {
+		t.Errorf("leftover = %v, want []", leftover)
+	}
+}
+
+func TestBuildFlightCapsAtMaxPackagesPerZip(t *testing.T) {
+	// MaxPackages = 2; queue 3 orders to distinct in-range hospitals.
+	scheduler := schedulerWithRange(160000, 2)
+	candidates := []Order{
+		{ID: "a", Time: 0, HospitalName: "Near", Priority: Emergency},
+		{ID: "b", Time: 0, HospitalName: "Mid", Priority: Emergency},
+		{ID: "c", Time: 0, HospitalName: "Far", Priority: Emergency},
+	}
+
+	flight, leftover := scheduler.buildFlight(0, candidates)
+
+	if len(flight.OrderIDs) != 2 {
+		t.Errorf("orderIDs = %d, want 2 (capped at MaxPackagesPerZip)", len(flight.OrderIDs))
+	}
+	if len(leftover) != 1 || leftover[0].ID != "c" {
+		t.Errorf("leftover = %v, want [c] (third order deferred)", leftover)
+	}
+}
+
 func TestPendingByPriorityEmergencyFirstFIFOWithin(t *testing.T) {
 	scheduler := newTestScheduler(1)
 	scheduler.QueueOrder(Order{ID: "r1", Time: 10, HospitalName: "Near", Priority: Resupply})

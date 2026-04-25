@@ -38,7 +38,7 @@ graph TD
   SCHED --> P5[20/80 reserve policy with EoD-deadline override for Resupply ✓]
   P1 --> T1S1[Unit test: fleet capacity never exceeded ✓]
   P2 --> T1S2[Unit test: priority ordering observed ✓]
-  P3 --> T1S3[Unit test: range gating, dedupe, MaxPackages cap]
+  P3 --> T1S3[Unit test: range gating, dedupe, MaxPackages cap ✓]
   P5 --> T1S4[Unit test: 20/80 reserve + deadline override]
 
   S2a --> C1[SchedulerConfig extension: edge-weight model + scheduling knob]
@@ -74,7 +74,8 @@ graph TD
 - [x] **P5**: 20/80 fleet reserve — cap concurrent Resupply launches at 80% of fleet, but allow borrowing the reserve when a Resupply order risks missing its EoD deadline. EoD risk threshold: round-trip direct flight time > seconds remaining in day. Default policy is `ReserveSoft`. Also wires `LaunchFlights` end-to-end.
 - [x] **T1S1**: Unit test for fleet capacity (availableZips reclaim, LaunchFlights respects fleet size).
 - [x] **T1S2**: Unit test for priority ordering (pendingByPriority + LaunchFlights launches Emergency before earlier Resupply).
-- [ ] **T1S3..T1S4**: Targeted unit tests per remaining behavior above.
+- [x] **T1S3**: Unit tests for buildFlight rules — range gating (Far rejected, Near+Mid kept), duplicate-stop collapse (3 orders, 1 stop), MaxPackages cap (third order deferred).
+- [ ] **T1S4**: Targeted unit test for the 20/80 reserve + EoD borrow.
 - [x] **T1I**: Integration test running full `orders.csv` through the simulator; asserts 0 unfulfilled, no flight exceeds range, never more than `numZips` concurrent flights, Emergency mean delay < Resupply mean delay.
 
 ### Step 2a — Configurable routing
