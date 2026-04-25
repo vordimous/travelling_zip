@@ -83,6 +83,7 @@ type ZipScheduler struct {
 	// currently in-flight zip. Entries with t <= currentTime are reclaimed on
 	// the next availableZips call.
 	zipReturnTimes []int
+	reservePolicy  ReservePolicy
 }
 
 func NewZipScheduler(
@@ -97,6 +98,7 @@ func NewZipScheduler(
 		zipSpeedMps:            config.ZipSpeedMps,
 		zipMaxCumulativeRangeM: config.ZipMaxCumulativeRangeM,
 		unfulfilledOrders:      []Order{},
+		reservePolicy:          ReserveSoft,
 	}
 }
 
@@ -234,9 +236,101 @@ func (zipScheduler *ZipScheduler) markZipLaunched(returnTime int) {
 	zipScheduler.zipReturnTimes = append(zipScheduler.zipReturnTimes, returnTime)
 }
 
+// ReservePolicy controls the 20% Emergency reserve enforcement when launching
+// Resupply flights.
+type ReservePolicy int
+
+const (
+	// ReserveNone launches Resupply greedily, ignoring the reserve.
+	ReserveNone ReservePolicy = iota
+	// ReserveHard refuses to launch Resupply once doing so would consume the
+	// reserve. Best for emergency mean delay when the fleet has slack.
+	ReserveHard
+	// ReserveSoft enforces the same cap as ReserveHard, but allows a Resupply
+	// order to borrow the reserve when waiting longer would push its delivery
+	// past midnight (direct round-trip flight time > seconds remaining today).
+	ReserveSoft
+)
+
+// ResupplyCapPercent is the fraction of fleet that Resupply may consume before
+// the reserve kicks in. Step 2a may make this configurable.
+const ResupplyCapPercent = 80
+
+func (zipScheduler *ZipScheduler) resupplyCap() int {
+	cap := (zipScheduler.numZips * ResupplyCapPercent) / 100
+	if cap < 1 && zipScheduler.numZips > 0 {
+		cap = 1
+	}
+	return cap
+}
+
+func (zipScheduler *ZipScheduler) reserveSize() int {
+	return zipScheduler.numZips - zipScheduler.resupplyCap()
+}
+
+// resupplyAtRisk reports whether the order's deadline is at risk of slipping
+// past midnight if it must wait for a non-reserve zip. The threshold is
+// "round-trip direct flight time > seconds remaining in the day".
+//
+// Note: with the default config (10 zips, range 160 km, speed 30 m/s) this
+// only fires in the last ~90 minutes of the day. Earlier triggering belongs
+// to a tunable knob (Step 2a / C4).
+func (zipScheduler *ZipScheduler) resupplyAtRisk(currentTime int, order Order) bool {
+	roundTrip := 2 * zipScheduler.graph.EdgeWeight(NestKey, order.HospitalName)
+	flightSeconds := int(roundTrip / float64(zipScheduler.zipSpeedMps))
+	return flightSeconds > (SecondsPerDay - currentTime)
+}
+
+// LaunchFlights returns the list of flights to launch at currentTime. Pending
+// orders are considered Emergency-first; flights are built greedily under the
+// active reserve policy and the scheduler tracks zip availability so a zip
+// cannot be in two flights at once.
 func (zipScheduler *ZipScheduler) LaunchFlights(currentTime int) []Flight {
-	_ = currentTime
-	return []Flight{}
+	flights := []Flight{}
+	available := zipScheduler.availableZips(currentTime)
+	if available <= 0 || len(zipScheduler.unfulfilledOrders) == 0 {
+		return flights
+	}
+
+	queue := zipScheduler.pendingByPriority()
+	reserve := zipScheduler.reserveSize()
+
+	canLaunchResupply := func(order Order) bool {
+		switch zipScheduler.reservePolicy {
+		case ReserveNone:
+			return true
+		case ReserveHard:
+			return available > reserve
+		case ReserveSoft:
+			if available > reserve {
+				return true
+			}
+			return zipScheduler.resupplyAtRisk(currentTime, order)
+		}
+		return true
+	}
+
+	for available > 0 && len(queue) > 0 {
+		head := queue[0]
+		if head.Priority == Resupply && !canLaunchResupply(head) {
+			break
+		}
+
+		flight, leftover := zipScheduler.buildFlight(currentTime, queue)
+		if len(flight.OrderIDs) == 0 {
+			break
+		}
+
+		distance := zipScheduler.routeDistance(flight.HospitalNames)
+		flightDuration := int(distance / float64(zipScheduler.zipSpeedMps))
+		zipScheduler.markZipLaunched(currentTime + flightDuration)
+		flights = append(flights, flight)
+		available--
+		queue = leftover
+	}
+
+	zipScheduler.unfulfilledOrders = append([]Order{}, queue...)
+	return flights
 }
 
 func (zipScheduler *ZipScheduler) UnfulfilledOrders() []Order {

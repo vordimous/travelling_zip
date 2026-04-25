@@ -26,7 +26,7 @@ graph TD
   G --> S2b[Step 2b: pre-launch flight-path visualization]
 
   S1 --> G1[Build delivery graph type Nest+hospitals, Euclidean edges ✓]
-  S1 --> SCHED[Scheduler logic on top of graph]
+  S1 --> SCHED[Scheduler logic on top of graph ✓]
   S1 --> T1I[Integration test: full orders.csv fulfilled, no constraint violations]
 
   G1 --> T1G[Unit tests: graph nodes, edge weights, symmetry ✓]
@@ -35,7 +35,7 @@ graph TD
   SCHED --> P2[Order pending queue by Emergency-before-Resupply ✓]
   SCHED --> P3[Build a flight: collapse duplicate stops, cap at MaxPackages, enforce range ✓]
   SCHED --> P4[Multi-stop route ordering nearest-neighbor over graph ✓]
-  SCHED --> P5[20/80 reserve policy with EoD-deadline override for Resupply]
+  SCHED --> P5[20/80 reserve policy with EoD-deadline override for Resupply ✓]
   P1 --> T1S1[Unit test: fleet capacity never exceeded]
   P2 --> T1S2[Unit test: priority ordering observed]
   P3 --> T1S3[Unit test: range gating, dedupe, MaxPackages cap]
@@ -71,7 +71,7 @@ graph TD
 - [x] **P2**: Sort/partition pending orders so Emergency is considered before Resupply.
 - [x] **P3**: Flight builder that (a) collapses duplicate hospitals into one stop with N packages, (b) caps stops by MaxPackagesPerZip total packages, (c) rejects routes exceeding `zipMaxCumulativeRangeM`.
 - [x] **P4**: Multi-stop route ordering using nearest-neighbor traversal over the graph (improvement on FIFO).
-- [ ] **P5**: 20/80 fleet reserve — cap concurrent Resupply launches at 80% of fleet, but allow borrowing the reserve when a Resupply order risks missing its EoD deadline. Define "EoD risk" precisely (e.g., distance/speed time-to-deliver > seconds-remaining-in-day).
+- [x] **P5**: 20/80 fleet reserve — cap concurrent Resupply launches at 80% of fleet, but allow borrowing the reserve when a Resupply order risks missing its EoD deadline. EoD risk threshold: round-trip direct flight time > seconds remaining in day. Default policy is `ReserveSoft`. Also wires `LaunchFlights` end-to-end.
 - [ ] **T1S1..T1S4**: Targeted unit tests per behavior above.
 - [ ] **T1I**: Integration test running full `orders.csv` through the simulator; asserts 0 unfulfilled, no flight exceeds range, never more than `numZips` concurrent flights, Emergency mean delay < Resupply mean delay.
 
@@ -102,3 +102,4 @@ graph TD
 - **Naive observation**: time conversion is `dist / speedMps` (m / (m/s) = s) — int truncation is fine for second-resolution simulation but worth noting in the scheduler comment.
 - All interaction with code goes through `make` targets (per user direction); no direct `go build`/`go test` calls.
 - **P4 experiment**: across all 1330 three-stop combinations of the 21 hospitals, NN gives avg route 188km vs FIFO 203km (and optimal 185km). NN matches optimal in 57% of combos and shrinks the over-160km set from 1021 to 944. NN sits inside `buildFlight`'s range gate so flights that fit only when reordered are not rejected.
+- **P5 experiment**: against `orders.csv` with 10 zips, `ReserveHard` cuts emergency mean delay from 531s (no reserve) to 254s — a 52% win — at the cost of resupply mean delay rising from 2399s to 3056s. `ReserveSoft` is identical to Hard at 10 zips because the dataset's last order is at 19:56 and direct flight times don't outrun the seconds-remaining threshold until very late. Stress-tested at 4 zips: SOFT recovers 3 of the 7 extra unfulfilled orders that HARD leaves behind by letting at-risk Resupply borrow the reserve. Threshold tuning (a stale-resupply timeout) is a natural fit for the C4 configurable knob in Step 2a.
