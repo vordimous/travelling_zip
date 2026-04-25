@@ -31,7 +31,7 @@ graph TD
 
   G1 --> T1G[Unit tests: graph nodes, edge weights, symmetry ✓]
 
-  SCHED --> P1[Track fleet availability via zip return times]
+  SCHED --> P1[Track fleet availability via zip return times ✓]
   SCHED --> P2[Order pending queue by Emergency-before-Resupply]
   SCHED --> P3[Build a flight: collapse duplicate stops, cap at MaxPackages, enforce range]
   SCHED --> P4[Multi-stop route ordering nearest-neighbor over graph]
@@ -67,7 +67,7 @@ graph TD
 
 ### Step 1 — Scheduler
 
-- [ ] **P1**: Track fleet availability — `zipReturnTimes` slice; `availableZips(currentTime)` reclaims returned zips. Naive proved this is required to avoid over-launching.
+- [x] **P1**: Track fleet availability — `zipReturnTimes` slice; `availableZips(currentTime)` reclaims returned zips. Naive proved this is required to avoid over-launching.
 - [ ] **P2**: Sort/partition pending orders so Emergency is considered before Resupply.
 - [ ] **P3**: Flight builder that (a) collapses duplicate hospitals into one stop with N packages, (b) caps stops by MaxPackagesPerZip total packages, (c) rejects routes exceeding `zipMaxCumulativeRangeM`.
 - [ ] **P4**: Multi-stop route ordering using nearest-neighbor traversal over the graph (improvement on FIFO).

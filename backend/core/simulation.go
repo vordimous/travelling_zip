@@ -79,6 +79,10 @@ type ZipScheduler struct {
 	zipSpeedMps            int
 	zipMaxCumulativeRangeM int
 	unfulfilledOrders      []Order
+	// zipReturnTimes holds the return-to-Nest seconds-since-midnight for every
+	// currently in-flight zip. Entries with t <= currentTime are reclaimed on
+	// the next availableZips call.
+	zipReturnTimes []int
 }
 
 func NewZipScheduler(
@@ -98,6 +102,24 @@ func NewZipScheduler(
 
 func (zipScheduler *ZipScheduler) QueueOrder(order Order) {
 	zipScheduler.unfulfilledOrders = append(zipScheduler.unfulfilledOrders, order)
+}
+
+// availableZips reclaims any in-flight zips whose return time has elapsed and
+// returns how many zips are free at currentTime.
+func (zipScheduler *ZipScheduler) availableZips(currentTime int) int {
+	stillFlying := zipScheduler.zipReturnTimes[:0]
+	for _, returnTime := range zipScheduler.zipReturnTimes {
+		if returnTime > currentTime {
+			stillFlying = append(stillFlying, returnTime)
+		}
+	}
+	zipScheduler.zipReturnTimes = stillFlying
+	return zipScheduler.numZips - len(stillFlying)
+}
+
+// markZipLaunched records a zip launch whose return-to-Nest time is returnTime.
+func (zipScheduler *ZipScheduler) markZipLaunched(returnTime int) {
+	zipScheduler.zipReturnTimes = append(zipScheduler.zipReturnTimes, returnTime)
 }
 
 func (zipScheduler *ZipScheduler) LaunchFlights(currentTime int) []Flight {
