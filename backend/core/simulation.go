@@ -104,6 +104,22 @@ func (zipScheduler *ZipScheduler) QueueOrder(order Order) {
 	zipScheduler.unfulfilledOrders = append(zipScheduler.unfulfilledOrders, order)
 }
 
+// pendingByPriority returns the pending unfulfilled orders ordered Emergency
+// before Resupply, with FIFO order preserved within each priority. The result
+// is a fresh slice; the underlying queue is unchanged.
+func (zipScheduler *ZipScheduler) pendingByPriority() []Order {
+	emergencies := make([]Order, 0, len(zipScheduler.unfulfilledOrders))
+	resupply := make([]Order, 0, len(zipScheduler.unfulfilledOrders))
+	for _, order := range zipScheduler.unfulfilledOrders {
+		if order.Priority == Emergency {
+			emergencies = append(emergencies, order)
+		} else {
+			resupply = append(resupply, order)
+		}
+	}
+	return append(emergencies, resupply...)
+}
+
 // availableZips reclaims any in-flight zips whose return time has elapsed and
 // returns how many zips are free at currentTime.
 func (zipScheduler *ZipScheduler) availableZips(currentTime int) int {
