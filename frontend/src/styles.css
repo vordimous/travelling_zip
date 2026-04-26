@@ -228,6 +228,38 @@ th {
   width: 100%;
 }
 
+.modal-backdrop {
+  align-items: center;
+  background: rgba(15, 24, 39, 0.5);
+  display: flex;
+  inset: 0;
+  justify-content: center;
+  padding: 24px;
+  position: fixed;
+  z-index: 50;
+}
+
+.modal {
+  max-height: calc(100vh - 48px);
+  max-width: 560px;
+  overflow-y: auto;
+  width: 100%;
+}
+
+.modal-close {
+  background: transparent;
+  border: 1px solid rgba(125, 152, 183, 0.4);
+  border-radius: 999px;
+  color: #234b78;
+  cursor: pointer;
+  font-weight: 600;
+  padding: 6px 12px;
+}
+
+.modal-close:hover {
+  background: rgba(220, 236, 255, 0.6);
+}
+
 @media (max-width: 720px) {
   .app-header {
     flex-direction: column;

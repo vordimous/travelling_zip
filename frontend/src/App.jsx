@@ -1,4 +1,5 @@
 import { useEffect, useState } from "react";
+import ConfigModal from "./ConfigModal";
 import DataTable from "./DataTable";
 import FlightMap from "./FlightMap";
 
@@ -56,6 +57,7 @@ export default function App() {
   const [snapshot, setSnapshot] = useState(null);
   const [status, setStatus] = useState("idle");
   const [error, setError] = useState("");
+  const [modalOpen, setModalOpen] = useState(false);
 
   const runSimulation = async (numericConfig) => {
     setStatus("loading");
@@ -92,12 +94,21 @@ export default function App() {
     };
   }, []);
 
-  const handleEditConfig = () => {
-    // C1b-4 will open the config modal here.
-  };
+  const handleEditConfig = () => setModalOpen(true);
 
   const handleRunSimulation = () => {
     runSimulation(configInputsToNumeric(config));
+  };
+
+  const handleConfigChange = (event) => {
+    const { name, value } = event.target;
+    setConfig((current) => ({ ...current, [name]: value }));
+  };
+
+  const handleConfigSubmit = async (event) => {
+    event.preventDefault();
+    await runSimulation(configInputsToNumeric(config));
+    setModalOpen(false);
   };
 
   return (
@@ -198,6 +209,15 @@ export default function App() {
           </section>
         )}
       </main>
+
+      <ConfigModal
+        open={modalOpen}
+        config={config}
+        onChange={handleConfigChange}
+        onSubmit={handleConfigSubmit}
+        onClose={() => setModalOpen(false)}
+        error={error}
+      />
     </>
   );
 }
