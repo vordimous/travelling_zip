@@ -275,6 +275,14 @@ func (zipScheduler *ZipScheduler) reserveSize() int {
 // Note: with the default config (10 zips, range 160 km, speed 30 m/s) this
 // only fires in the last ~90 minutes of the day. Earlier triggering belongs
 // to a tunable knob (Step 2a / C4).
+//
+// TODO: 2 * EdgeWeight(Nest, hospital) is the round-trip time if this order
+// flew alone. In practice it is delivered as part of a multi-stop flight, so
+// the actual time-to-deliver is shorter. The current value therefore
+// overestimates risk and triggers reserve borrowing slightly earlier than
+// strictly necessary — a conservative fail-safe. A more accurate computation
+// would amortize the cost across the planned route, but the planned route is
+// not known at this decision point. Leaving as-is; revisit post-Step-2.
 func (zipScheduler *ZipScheduler) resupplyAtRisk(currentTime int, order Order) bool {
 	roundTrip := 2 * zipScheduler.graph.EdgeWeight(NestKey, order.HospitalName)
 	flightSeconds := int(roundTrip / float64(zipScheduler.zipSpeedMps))
