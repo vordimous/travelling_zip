@@ -45,7 +45,7 @@ graph TD
   C1 --> C1a[SimulationConfig + ParseConfig: edgeWeightModel + scheduling knob ✓]
   C1 --> C1b[UI migration]
   C1b --> C1b1[Extract DataTable to own file with fixedHeight prop ✓]
-  C1b --> C1b2[Pinned header layout + sticky styles + App test heading update]
+  C1b --> C1b2[Pinned header layout + sticky styles + App test heading update ✓]
   C1b --> C1b3[Summary bar above FlightMap]
   C1b --> C1b4[Config modal opened from header button]
   C1b1 --> C1b2
@@ -95,7 +95,7 @@ graph TD
 - [x] **C1a**: Extend `SimulationConfig` (and `ParseConfig`) with optional fields. Adds `EdgeWeightModel` (default `"euclidean"`, consumed by C3) and `EmergencyWaitThresholdSec` (default 0, consumed by C4). `ParseConfig` accepts both as optional with defaults; existing payloads continue to work unchanged.
 - **C1b**: UI migration — split into ordered sub-leaves after a worktree experiment. Each sub-leaf keeps tests green on its own.
   - [x] **C1b-1**: Extract `DataTable` to its own file with a `fixedHeight` prop. Drop-in, no visible UI change. App.jsx imports from `./DataTable` instead of declaring inline.
-  - [ ] **C1b-2**: Replace the hero block with a pinned `.app-header` (title, status pill, "Edit Config" + "Run Simulation" buttons). Move `<main className="app-shell">` below the header. Add sticky positioning + baseline header styles. Update `App.test.jsx` heading regex to match the new header copy.
+  - [x] **C1b-2**: Replaced the hero block with a pinned `.app-header` containing the title, status pill, implementation badge, and Edit/Run buttons. `app-shell` lives in `<main>` below the sticky header. Inline simulation-controls form removed (modal lands in C1b-4); Edit Config button is a no-op handler ready for the modal wire-up. Removed `.hero`, `.hero-meta`, `.eyebrow`, and `.lede` CSS rules. App test heading regex updated to `^traveling zip$`.
   - [ ] **C1b-3**: Summary bar between header and `FlightMap` showing totals (Hospitals / Orders / Flights / Unfulfilled).
   - [ ] **C1b-4**: Extracted `ConfigModal` component opened from the header button. Submit runs the simulator and closes the modal. Modal accessibility (focus trap, Escape-to-close) is deferred to post-Step-2; current scope is a backdrop + close button.
 - [x] **C2a**: `EdgeWeight` strategy interface; default impl returns Euclidean (extracted from G1). `Graph.EdgeWeight` now delegates to a pluggable strategy; `NewGraph` keeps the default Euclidean behavior, and `NewGraphWithEdgeWeight` lets callers inject alternatives (used by C3).
