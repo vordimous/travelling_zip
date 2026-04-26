@@ -42,6 +42,15 @@ function configToInputs(config) {
   );
 }
 
+function SummaryStat({ label, value }) {
+  return (
+    <div className="summary-stat">
+      <span className="summary-label">{label}</span>
+      <span className="summary-value">{value}</span>
+    </div>
+  );
+}
+
 export default function App() {
   const [config, setConfig] = useState(defaultConfigInputs);
   const [snapshot, setSnapshot] = useState(null);
@@ -115,6 +124,18 @@ export default function App() {
         {error ? (
           <section className="panel">
             <p className="error">{error}</p>
+          </section>
+        ) : null}
+
+        {snapshot ? (
+          <section className="panel summary-bar">
+            <SummaryStat label="Hospitals" value={snapshot.hospitals.length} />
+            <SummaryStat label="Orders" value={snapshot.orders.length} />
+            <SummaryStat label="Flights" value={snapshot.flights.length} />
+            <SummaryStat
+              label="Unfulfilled"
+              value={snapshot.unfulfilledOrders.length}
+            />
           </section>
         ) : null}
 

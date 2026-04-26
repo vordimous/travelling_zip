@@ -191,6 +191,35 @@ th {
   text-transform: uppercase;
 }
 
+.summary-bar {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 24px;
+  justify-content: space-around;
+  padding: 16px 24px;
+}
+
+.summary-stat {
+  display: flex;
+  flex-direction: column;
+  gap: 4px;
+}
+
+.summary-label {
+  color: #4177b8;
+  font-size: 0.75rem;
+  font-weight: 700;
+  letter-spacing: 0.06em;
+  text-transform: uppercase;
+}
+
+.summary-value {
+  color: #102033;
+  font-size: 1.6rem;
+  font-weight: 700;
+  line-height: 1;
+}
+
 .flight-map {
   background: rgba(248, 250, 253, 0.6);
   border-radius: 12px;
