@@ -249,25 +249,45 @@ func (zipScheduler *ZipScheduler) markZipLaunched(returnTime int) {
 	zipScheduler.zipReturnTimes = append(zipScheduler.zipReturnTimes, returnTime)
 }
 
-// ReservePolicy controls the 20% Emergency reserve enforcement when launching
-// Resupply flights.
+// 80/20 fleet reserve rule
+//
+// The fleet is split into two pools whenever a launch decision is made:
+//
+//   - Resupply pool: ResupplyCapPercent of the fleet (default 80%). With the
+//     10-zip default this is 8 zips. Resupply orders may consume any of these
+//     without restriction.
+//   - Emergency reserve: the remaining fraction (default 20%, i.e. 2 zips on
+//     a 10-zip fleet). Always available to Emergency orders; off-limits to
+//     Resupply except under ReserveSoft when an order's EoD deadline is at
+//     risk (see resupplyAtRisk).
+//
+// Concretely the gate is `available > reserveSize`: a Resupply launch is
+// permitted only when, after consuming one zip, the reserve still has at
+// least reserveSize zips free for incoming Emergency orders. Emergencies
+// are never gated. Multi-stop flights may bundle Resupply orders alongside
+// an Emergency for free since the gate is checked once per launch.
+//
+// ResupplyCapPercent is currently a build-time constant; surfacing it
+// through SimulationConfig is left for a future iteration.
+const ResupplyCapPercent = 80
+
+// ReservePolicy selects how strictly the rule above is enforced.
 type ReservePolicy int
 
 const (
-	// ReserveNone launches Resupply greedily, ignoring the reserve.
+	// ReserveNone disables the reserve entirely; Resupply launches greedily.
 	ReserveNone ReservePolicy = iota
-	// ReserveHard refuses to launch Resupply once doing so would consume the
-	// reserve. Best for emergency mean delay when the fleet has slack.
+	// ReserveHard enforces the reserve strictly: a Resupply launch is rejected
+	// once doing so would dip into the reserve. Best emergency-delay numbers
+	// when the fleet has slack.
 	ReserveHard
-	// ReserveSoft enforces the same cap as ReserveHard, but allows a Resupply
-	// order to borrow the reserve when waiting longer would push its delivery
-	// past midnight (direct round-trip flight time > seconds remaining today).
+	// ReserveSoft enforces the same cap as Hard, but lets a Resupply order
+	// borrow the reserve when its EoD deadline is at risk (round-trip direct
+	// flight time exceeds seconds remaining in the day, OR the order has
+	// waited longer than EmergencyWaitThresholdSec when configured). This is
+	// the default — see resupplyAtRisk for the precise threshold.
 	ReserveSoft
 )
-
-// ResupplyCapPercent is the fraction of fleet that Resupply may consume before
-// the reserve kicks in. Step 2a may make this configurable.
-const ResupplyCapPercent = 80
 
 func (zipScheduler *ZipScheduler) resupplyCap() int {
 	cap := (zipScheduler.numZips * ResupplyCapPercent) / 100
