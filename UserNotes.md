@@ -48,6 +48,8 @@ Useful things to cover:
 
 I had implemented portions of a 80/20 rule for Zip fleet capacity to keep some zips in reserve to only be used for Emergency flights. I removed it in the end given there wasn't any "live" emergency flights being added and the code was extra noise for this challenge.
 
+I also didn't add more repo specific stuff. Linters and extra things that I would add in a typical project were left out other than the core bits that would make adding them very easy in the future.
+
 > If you had another 2-4 hours, what would you improve next?
 
 The edge weight options allows for generating multiple different graphs to make informed decisions. The next thing that would make this challenge pretty interesting would be a 3rd dataset of timed obstructions like storms or Zip speed deltas due head and tail wind. That data could be timed and set to coord locations or wind compass direction. That would be enough to generate multiple other edge weight calculations and graphs. I could then see where Resupply flights could take on more risk to fly into wind or light storms, but Emergency flights would be more conservative.
