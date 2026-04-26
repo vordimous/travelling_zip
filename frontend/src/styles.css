@@ -79,6 +79,17 @@ input {
   margin: 16px 0 0;
 }
 
+.field-error {
+  display: block;
+  margin-top: 4px;
+  color: #b91c1c;
+  font-size: 0.85em;
+}
+
+[aria-invalid="true"] {
+  border-color: #b91c1c;
+}
+
 .implementation,
 .status-pill,
 .panel-header span {
@@ -145,10 +156,13 @@ input {
   font-weight: 600;
 }
 
-.control-grid input {
+.control-grid input,
+.control-grid select {
+  background: #fff;
   border: 1px solid #bfd0e4;
   border-radius: 12px;
   padding: 12px 14px;
+  width: 100%;
 }
 
 .control-grid button {

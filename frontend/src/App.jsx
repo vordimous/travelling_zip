@@ -2,17 +2,11 @@ import { useEffect, useState } from "react";
 import ConfigModal from "./ConfigModal";
 import DataTable from "./DataTable";
 import FlightMap from "./FlightMap";
-
-const defaultConfig = {
-  numZips: 10,
-  maxPackagesPerZip: 3,
-  zipSpeedMps: 30,
-  zipMaxCumulativeRangeM: 160000,
-};
-
-const defaultConfigInputs = Object.fromEntries(
-  Object.entries(defaultConfig).map(([key, value]) => [key, String(value)])
-);
+import {
+  configToInputs,
+  defaultConfig,
+  parseConfigInputs,
+} from "./configSchema";
 
 async function fetchSimulation(config) {
   const response = await fetch("/api/simulation", {
@@ -31,18 +25,6 @@ async function fetchSimulation(config) {
   return response.json();
 }
 
-function configInputsToNumeric(inputs) {
-  return Object.fromEntries(
-    Object.entries(inputs).map(([key, value]) => [key, Number(value)])
-  );
-}
-
-function configToInputs(config) {
-  return Object.fromEntries(
-    Object.entries(config).map(([key, value]) => [key, String(value)])
-  );
-}
-
 function SummaryStat({ label, value }) {
   return (
     <div className="summary-stat">
@@ -53,10 +35,11 @@ function SummaryStat({ label, value }) {
 }
 
 export default function App() {
-  const [config, setConfig] = useState(defaultConfigInputs);
+  const [config, setConfig] = useState(() => configToInputs(defaultConfig));
   const [snapshot, setSnapshot] = useState(null);
   const [status, setStatus] = useState("idle");
   const [error, setError] = useState("");
+  const [fieldErrors, setFieldErrors] = useState(null);
   const [modalOpen, setModalOpen] = useState(false);
 
   const runSimulation = async (numericConfig) => {
@@ -67,9 +50,11 @@ export default function App() {
       setSnapshot(nextSnapshot);
       setConfig(configToInputs(nextSnapshot.config));
       setStatus("success");
+      return true;
     } catch (nextError) {
       setStatus("error");
       setError(nextError.message);
+      return false;
     }
   };
 
@@ -96,8 +81,18 @@ export default function App() {
 
   const handleEditConfig = () => setModalOpen(true);
 
+  const submitConfig = async () => {
+    const { data, fieldErrors: nextFieldErrors } = parseConfigInputs(config);
+    if (!data) {
+      setFieldErrors(nextFieldErrors);
+      return false;
+    }
+    setFieldErrors(null);
+    return runSimulation(data);
+  };
+
   const handleRunSimulation = () => {
-    runSimulation(configInputsToNumeric(config));
+    submitConfig();
   };
 
   const handleConfigChange = (event) => {
@@ -107,8 +102,8 @@ export default function App() {
 
   const handleConfigSubmit = async (event) => {
     event.preventDefault();
-    await runSimulation(configInputsToNumeric(config));
-    setModalOpen(false);
+    const ok = await submitConfig();
+    if (ok) setModalOpen(false);
   };
 
   return (
@@ -217,6 +212,7 @@ export default function App() {
         onSubmit={handleConfigSubmit}
         onClose={() => setModalOpen(false)}
         error={error}
+        fieldErrors={fieldErrors}
       />
     </>
   );

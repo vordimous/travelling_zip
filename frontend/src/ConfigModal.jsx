@@ -1,6 +1,8 @@
+import { configFields } from "./configSchema";
+
 // Modal form for editing simulation configuration. The parent owns the
-// `config` input state and submits to the backend; this component is the
-// presentational shell.
+// `config` input state (strings) and submits to the backend; this component
+// renders fields from a static descriptor list and surfaces per-field errors.
 //
 // Accessibility: clicking the backdrop closes the modal. Focus trapping and
 // Escape-to-close are deferred to post-Step-2.
@@ -11,6 +13,7 @@ export default function ConfigModal({
   onSubmit,
   onClose,
   error,
+  fieldErrors,
 }) {
   if (!open) {
     return null;
@@ -35,18 +38,43 @@ export default function ConfigModal({
           </button>
         </div>
         <form className="control-grid" onSubmit={onSubmit}>
-          {Object.entries(config).map(([key, value]) => (
-            <label key={key}>
-              <span>{key}</span>
-              <input
-                min="0"
-                name={key}
-                onChange={onChange}
-                type="number"
-                value={value}
-              />
-            </label>
-          ))}
+          {configFields.map((field) => {
+            const { key, label, kind } = field;
+            const fieldError = fieldErrors?.[key];
+            const value = config[key] ?? "";
+            return (
+              <label key={key}>
+                <span>{label}</span>
+                {kind === "enum" ? (
+                  <select
+                    name={key}
+                    value={value}
+                    onChange={onChange}
+                    aria-invalid={fieldError ? "true" : undefined}
+                  >
+                    {field.options.map((option) => (
+                      <option key={option} value={option}>
+                        {option}
+                      </option>
+                    ))}
+                  </select>
+                ) : (
+                  <input
+                    name={key}
+                    type="number"
+                    min={field.min}
+                    step={field.step}
+                    value={value}
+                    onChange={onChange}
+                    aria-invalid={fieldError ? "true" : undefined}
+                  />
+                )}
+                {fieldError ? (
+                  <span className="field-error">{fieldError}</span>
+                ) : null}
+              </label>
+            );
+          })}
           <button type="submit">Save & Run</button>
         </form>
         {error ? <p className="error">{error}</p> : null}

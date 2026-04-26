@@ -19,7 +19,7 @@ export default function DataTable({
         <div
           className="table-wrap"
           style={
-            fixedHeight ? { height: fixedHeight, overflowY: "auto" } : undefined
+            { height: fixedHeight ?? 300, overflowY: "auto" }
           }
         >
           <table>
