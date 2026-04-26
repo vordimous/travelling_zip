@@ -1,4 +1,5 @@
 import { useEffect, useState } from "react";
+import DataTable from "./DataTable";
 import FlightMap from "./FlightMap";
 
 const defaultConfig = {
@@ -27,41 +28,6 @@ async function fetchSimulation(config) {
   }
 
   return response.json();
-}
-
-function DataTable({ title, columns, rows, emptyMessage }) {
-  return (
-    <section className="panel">
-      <div className="panel-header">
-        <h2>{title}</h2>
-        <span>{rows.length}</span>
-      </div>
-      {rows.length === 0 ? (
-        <p className="empty">{emptyMessage}</p>
-      ) : (
-        <div className="table-wrap">
-          <table>
-            <thead>
-              <tr>
-                {columns.map((column) => (
-                  <th key={column.key}>{column.label}</th>
-                ))}
-              </tr>
-            </thead>
-            <tbody>
-              {rows.map((row, index) => (
-                <tr key={row.id ?? `${title}-${index}`}>
-                  {columns.map((column) => (
-                    <td key={column.key}>{row[column.key]}</td>
-                  ))}
-                </tr>
-              ))}
-            </tbody>
-          </table>
-        </div>
-      )}
-    </section>
-  );
 }
 
 export default function App() {
