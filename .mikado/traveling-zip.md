@@ -60,7 +60,7 @@ graph TD
   S2b --> V3[Wire FlightMap into App.jsx with latest snapshot ✓]
   V1 --> V2
   V2 --> V3
-  S2b --> T2B[Vitest smoke test: FlightMap renders given representative snapshot]
+  S2b --> T2B[Vitest smoke test: FlightMap renders given representative snapshot ✓]
 ```
 
 ## Prerequisites
@@ -99,7 +99,7 @@ graph TD
 - [x] **V1**: Confirmed by live probe of `POST /api/simulation`: snapshot keys are `[implementation, config, hospitals, orders, flights, unfulfilledOrders]`. `hospitals[i] = {name, northM, eastM}` and `flights[i] = {launchTime, hospitalNames, orderIds}`. The Nest is implicit at `(0,0)` and is the start + end of every route. Sufficient for V2's SVG/canvas rendering.
 - [x] **V2**: `FlightMap` React component — SVG with auto-fit `viewBox` from hospital extents (north axis flipped to match SVG orientation), hospitals + Nest as labelled circles, flight legs drawn as low-opacity polylines (Nest → stops → Nest). Stroke and label sizes scale with the dataset span. Styles + responsive height added to `styles.css`.
 - [x] **V3**: `FlightMap` mounted in `App.jsx` between Simulation Controls and the data tables, so the operator sees the planned routes immediately after a simulation run.
-- [ ] **T2B**: Vitest smoke test — `FlightMap` renders given a representative snapshot fixture.
+- [x] **T2B**: Four Vitest tests — null snapshot returns nothing, header renders with flight count, one polyline per flight + one circle per hospital plus the Nest are present, and an empty `flights[]` produces zero polylines while still rendering the heading.
 
 ## Notes and learnings
 
