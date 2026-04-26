@@ -55,7 +55,7 @@ graph TD
   C1a --> C4
   S2a --> T2A[Unit tests: each strategy + knob changes behavior observably ✓]
 
-  S2b --> V1[Snapshot already carries hospitals+flights; verify shape suffices]
+  S2b --> V1[Snapshot already carries hospitals+flights; verify shape suffices ✓]
   S2b --> V2[SVG/Canvas FlightMap component: Nest, hospitals, flight legs]
   S2b --> V3[Wire FlightMap into App.jsx with latest snapshot]
   V1 --> V2
@@ -96,7 +96,7 @@ graph TD
 
 ### Step 2b — Visualization
 
-- [ ] **V1**: Confirm `Snapshot` already has hospitals + flights in a shape the frontend can map (Hospital{name, north, east} + Flight{hospitalNames, orderIds, launchTime}).
+- [x] **V1**: Confirmed by live probe of `POST /api/simulation`: snapshot keys are `[implementation, config, hospitals, orders, flights, unfulfilledOrders]`. `hospitals[i] = {name, northM, eastM}` and `flights[i] = {launchTime, hospitalNames, orderIds}`. The Nest is implicit at `(0,0)` and is the start + end of every route. Sufficient for V2's SVG/canvas rendering.
 - [ ] **V2**: `FlightMap` React component — SVG of Nest + hospitals scaled to viewbox, flight legs drawn as polylines.
 - [ ] **V3**: Mount `FlightMap` in `App.jsx` showing the most recent simulation snapshot.
 - [ ] **T2B**: Vitest smoke test — `FlightMap` renders given a representative snapshot fixture.
