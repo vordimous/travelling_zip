@@ -49,7 +49,7 @@ graph TD
   C2 --> C2b[Pre-compute edges at graph construction ✓]
   C2 --> C2c[TODO comment on resupplyAtRisk round-trip overestimate ✓]
   S2a --> C3[One alternative edge-weight model selectable via config]
-  S2a --> C4[One scheduling knob with observable behavior change]
+  S2a --> C4[One scheduling knob with observable behavior change ✓]
   C1a --> C2a
   C2a --> C3
   C1a --> C4
@@ -91,7 +91,7 @@ graph TD
 - [x] **C2b**: Pre-compute edges at graph construction so `EdgeWeight` is an O(1) map lookup rather than a `sqrt` per call. The Euclidean strategy now builds an `edges[from][to]` matrix once.
 - [x] **C2c**: Add a TODO comment on `resupplyAtRisk` documenting that `2 * EdgeWeight(Nest, X)` overestimates the actual round-trip time when the order flies as part of a multi-stop, so the at-risk threshold triggers reserve borrowing slightly earlier than strictly necessary — a conservative fail-safe. Code change deferred to post-Step-2.
 - [ ] **C3**: One alternative edge-weight model (e.g. range-penalty: edges proportionally penalize legs near max range to prefer compact loops).
-- [ ] **C4**: One scheduling knob that changes observable behavior (e.g. `emergencyWaitThresholdSec` triggering reserve-borrow earlier).
+- [x] **C4**: `EmergencyWaitThresholdSec` is now read by `NewZipScheduler` and added as a second OR-trigger inside `resupplyAtRisk`. When set > 0, a Resupply order that has been queued for at least the threshold seconds is treated as at-risk and may borrow the reserve under `ReserveSoft`. T2A will pin the observable behavior change.
 - [ ] **T2A**: Tests proving each strategy and knob changes outputs observably.
 
 ### Step 2b — Visualization

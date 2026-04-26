@@ -93,8 +93,9 @@ type ZipScheduler struct {
 	// zipReturnTimes holds the return-to-Nest seconds-since-midnight for every
 	// currently in-flight zip. Entries with t <= currentTime are reclaimed on
 	// the next availableZips call.
-	zipReturnTimes []int
-	reservePolicy  ReservePolicy
+	zipReturnTimes            []int
+	reservePolicy             ReservePolicy
+	emergencyWaitThresholdSec int
 }
 
 func NewZipScheduler(
@@ -108,8 +109,9 @@ func NewZipScheduler(
 		maxPackagesPerZip:      config.MaxPackagesPerZip,
 		zipSpeedMps:            config.ZipSpeedMps,
 		zipMaxCumulativeRangeM: config.ZipMaxCumulativeRangeM,
-		unfulfilledOrders:      []Order{},
-		reservePolicy:          ReserveSoft,
+		unfulfilledOrders:         []Order{},
+		reservePolicy:             ReserveSoft,
+		emergencyWaitThresholdSec: config.EmergencyWaitThresholdSec,
 	}
 }
 
@@ -280,12 +282,15 @@ func (zipScheduler *ZipScheduler) reserveSize() int {
 }
 
 // resupplyAtRisk reports whether the order's deadline is at risk of slipping
-// past midnight if it must wait for a non-reserve zip. The threshold is
-// "round-trip direct flight time > seconds remaining in the day".
+// and should therefore be allowed to borrow the reserve under ReserveSoft.
 //
-// Note: with the default config (10 zips, range 160 km, speed 30 m/s) this
-// only fires in the last ~90 minutes of the day. Earlier triggering belongs
-// to a tunable knob (Step 2a / C4).
+// Two independent triggers (logical OR):
+//   - EoD risk: round-trip direct flight time > seconds remaining in the day.
+//     With the default config this only fires in the last ~90 minutes.
+//   - Stale wait: when EmergencyWaitThresholdSec > 0, an order that has been
+//     queued for at least that many seconds becomes at-risk regardless of EoD.
+//     This is the configurable knob (C4) that lets operators tune how
+//     aggressively the reserve gets borrowed.
 //
 // TODO: 2 * EdgeWeight(Nest, hospital) is the round-trip time if this order
 // flew alone. In practice it is delivered as part of a multi-stop flight, so
@@ -295,6 +300,10 @@ func (zipScheduler *ZipScheduler) reserveSize() int {
 // would amortize the cost across the planned route, but the planned route is
 // not known at this decision point. Leaving as-is; revisit post-Step-2.
 func (zipScheduler *ZipScheduler) resupplyAtRisk(currentTime int, order Order) bool {
+	if zipScheduler.emergencyWaitThresholdSec > 0 &&
+		currentTime-order.Time >= zipScheduler.emergencyWaitThresholdSec {
+		return true
+	}
 	roundTrip := 2 * zipScheduler.graph.EdgeWeight(NestKey, order.HospitalName)
 	flightSeconds := int(roundTrip / float64(zipScheduler.zipSpeedMps))
 	return flightSeconds > (SecondsPerDay - currentTime)
