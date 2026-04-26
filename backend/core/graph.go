@@ -33,6 +33,24 @@ func NewGraph(hospitals map[string]Hospital) *Graph {
 // NewGraphWithEdgeWeight builds a graph and lets the caller supply an
 // alternative EdgeWeight implementation. Pass nil to fall back to the default
 // Euclidean strategy.
+//
+// To add a new edge-weight model:
+//  1. Implement the EdgeWeight interface (one method, Weight(from, to)).
+//     Implementations must be symmetric (Weight(a,b) == Weight(b,a)) and
+//     return 0 for self-loops.
+//  2. Add a constructor (e.g. newRangePenaltyEdgeWeight(nodes, ...)) that
+//     captures the node coordinates and any per-strategy state (caches,
+//     tunables).
+//  3. Add a string identifier to SimulationConfig.EdgeWeightModel and dispatch
+//     it to your constructor wherever the scheduler instantiates the graph
+//     (currently NewZipScheduler). Keep "euclidean" as the default so the
+//     existing API contract is preserved.
+//  4. Test the alternative against the same Graph contract (graph_test.go is
+//     the template) and verify it produces observably different routing
+//     decisions vs. Euclidean for at least one realistic scenario.
+//
+// This expansion path is the seam Step 2a was designed around; the
+// Mikado plan tracks it as leaf C3 (currently deferred to post-Step-2).
 func NewGraphWithEdgeWeight(hospitals map[string]Hospital, edgeWeight EdgeWeight) *Graph {
 	nodes := make(map[string]Hospital, len(hospitals)+1)
 	nodes[NestKey] = Hospital{Name: NestKey}
