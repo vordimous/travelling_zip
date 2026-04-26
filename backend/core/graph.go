@@ -69,25 +69,34 @@ func (graph *Graph) EdgeWeight(from string, to string) float64 {
 }
 
 // euclideanEdgeWeight is the default EdgeWeight strategy: straight-line
-// distance in meters between two node coordinates.
+// distance in meters between two node coordinates. Distances are precomputed
+// at construction so Weight is an O(1) map lookup rather than a sqrt per call.
 type euclideanEdgeWeight struct {
-	nodes map[string]Hospital
+	edges map[string]map[string]float64
 }
 
 func newEuclideanEdgeWeight(nodes map[string]Hospital) EdgeWeight {
-	return &euclideanEdgeWeight{nodes: nodes}
+	edges := make(map[string]map[string]float64, len(nodes))
+	for fromName, fromNode := range nodes {
+		row := make(map[string]float64, len(nodes))
+		for toName, toNode := range nodes {
+			dn := float64(fromNode.NorthM - toNode.NorthM)
+			de := float64(fromNode.EastM - toNode.EastM)
+			row[toName] = math.Sqrt(dn*dn + de*de)
+		}
+		edges[fromName] = row
+	}
+	return &euclideanEdgeWeight{edges: edges}
 }
 
 func (strategy *euclideanEdgeWeight) Weight(from string, to string) float64 {
-	a, ok := strategy.nodes[from]
+	row, ok := strategy.edges[from]
 	if !ok {
 		panic("core.euclideanEdgeWeight: unknown node " + from)
 	}
-	b, ok := strategy.nodes[to]
+	weight, ok := row[to]
 	if !ok {
 		panic("core.euclideanEdgeWeight: unknown node " + to)
 	}
-	dn := float64(a.NorthM - b.NorthM)
-	de := float64(a.EastM - b.EastM)
-	return math.Sqrt(dn*dn + de*de)
+	return weight
 }

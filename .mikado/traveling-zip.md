@@ -46,7 +46,7 @@ graph TD
   C1 --> C1b[UI migration: header nav, config modal, summary bar, generic DataTable]
   S2a --> C2[EdgeWeight strategy + cleanup]
   C2 --> C2a[EdgeWeight strategy interface; default=Euclidean ✓]
-  C2 --> C2b[Pre-compute edges at graph construction]
+  C2 --> C2b[Pre-compute edges at graph construction ✓]
   C2 --> C2c[TODO comment on resupplyAtRisk round-trip overestimate ✓]
   S2a --> C3[One alternative edge-weight model selectable via config]
   S2a --> C4[One scheduling knob with observable behavior change]
@@ -88,7 +88,7 @@ graph TD
 - [ ] **C1a**: Extend `SimulationConfig` (and `ParseConfig`) with optional fields for `edgeWeightModel` and one scheduling knob (e.g. `emergencyWaitThresholdSec`). Default values preserve current behavior.
 - [ ] **C1b**: UI migration — replace the large title block with a thin pinned header nav; move config editing into a modal; "Edit config" and "Run simulator" become header buttons; add a single summary section at the top with totals from each data section; refactor the existing data tables into one generic `DataTable` component (extracted from current code) with a fixed-height option. Keep as one leaf; sub-prereqs may surface during a worktree experiment.
 - [x] **C2a**: `EdgeWeight` strategy interface; default impl returns Euclidean (extracted from G1). `Graph.EdgeWeight` now delegates to a pluggable strategy; `NewGraph` keeps the default Euclidean behavior, and `NewGraphWithEdgeWeight` lets callers inject alternatives (used by C3).
-- [ ] **C2b**: Pre-compute edges at graph construction so `EdgeWeight` is an O(1) map lookup rather than a `sqrt` per call. Lands inside or right after C2a.
+- [x] **C2b**: Pre-compute edges at graph construction so `EdgeWeight` is an O(1) map lookup rather than a `sqrt` per call. The Euclidean strategy now builds an `edges[from][to]` matrix once.
 - [x] **C2c**: Add a TODO comment on `resupplyAtRisk` documenting that `2 * EdgeWeight(Nest, X)` overestimates the actual round-trip time when the order flies as part of a multi-stop, so the at-risk threshold triggers reserve borrowing slightly earlier than strictly necessary — a conservative fail-safe. Code change deferred to post-Step-2.
 - [ ] **C3**: One alternative edge-weight model (e.g. range-penalty: edges proportionally penalize legs near max range to prefer compact loops).
 - [ ] **C4**: One scheduling knob that changes observable behavior (e.g. `emergencyWaitThresholdSec` triggering reserve-borrow earlier).
