@@ -43,7 +43,14 @@ graph TD
 
   S2a --> C1[Configurability]
   C1 --> C1a[SimulationConfig + ParseConfig: edgeWeightModel + scheduling knob ✓]
-  C1 --> C1b[UI migration: header nav, config modal, summary bar, generic DataTable]
+  C1 --> C1b[UI migration]
+  C1b --> C1b1[Extract DataTable to own file with fixedHeight prop]
+  C1b --> C1b2[Pinned header layout + sticky styles + App test heading update]
+  C1b --> C1b3[Summary bar above FlightMap]
+  C1b --> C1b4[Config modal opened from header button]
+  C1b1 --> C1b2
+  C1b2 --> C1b3
+  C1b2 --> C1b4
   S2a --> C2[EdgeWeight strategy + cleanup]
   C2 --> C2a[EdgeWeight strategy interface; default=Euclidean ✓]
   C2 --> C2b[Pre-compute edges at graph construction ✓]
@@ -86,7 +93,11 @@ graph TD
 ### Step 2a — Configurable routing
 
 - [x] **C1a**: Extend `SimulationConfig` (and `ParseConfig`) with optional fields. Adds `EdgeWeightModel` (default `"euclidean"`, consumed by C3) and `EmergencyWaitThresholdSec` (default 0, consumed by C4). `ParseConfig` accepts both as optional with defaults; existing payloads continue to work unchanged.
-- [ ] **C1b**: UI migration — replace the large title block with a thin pinned header nav; move config editing into a modal; "Edit config" and "Run simulator" become header buttons; add a single summary section at the top with totals from each data section; refactor the existing data tables into one generic `DataTable` component (extracted from current code) with a fixed-height option. Keep as one leaf; sub-prereqs may surface during a worktree experiment.
+- **C1b**: UI migration — split into ordered sub-leaves after a worktree experiment. Each sub-leaf keeps tests green on its own.
+  - [ ] **C1b-1**: Extract `DataTable` to its own file with a `fixedHeight` prop. Drop-in, no visible UI change.
+  - [ ] **C1b-2**: Replace the hero block with a pinned `.app-header` (title, status pill, "Edit Config" + "Run Simulation" buttons). Move `<main className="app-shell">` below the header. Add sticky positioning + baseline header styles. Update `App.test.jsx` heading regex to match the new header copy.
+  - [ ] **C1b-3**: Summary bar between header and `FlightMap` showing totals (Hospitals / Orders / Flights / Unfulfilled).
+  - [ ] **C1b-4**: Extracted `ConfigModal` component opened from the header button. Submit runs the simulator and closes the modal. Modal accessibility (focus trap, Escape-to-close) is deferred to post-Step-2; current scope is a backdrop + close button.
 - [x] **C2a**: `EdgeWeight` strategy interface; default impl returns Euclidean (extracted from G1). `Graph.EdgeWeight` now delegates to a pluggable strategy; `NewGraph` keeps the default Euclidean behavior, and `NewGraphWithEdgeWeight` lets callers inject alternatives (used by C3).
 - [x] **C2b**: Pre-compute edges at graph construction so `EdgeWeight` is an O(1) map lookup rather than a `sqrt` per call. The Euclidean strategy now builds an `edges[from][to]` matrix once.
 - [x] **C2c**: Add a TODO comment on `resupplyAtRisk` documenting that `2 * EdgeWeight(Nest, X)` overestimates the actual round-trip time when the order flies as part of a multi-stop, so the at-risk threshold triggers reserve borrowing slightly earlier than strictly necessary — a conservative fail-safe. Code change deferred to post-Step-2.
