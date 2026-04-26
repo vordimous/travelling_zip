@@ -74,7 +74,7 @@ No explicit bug that I have found. There is a lot of room for UI polish and I ha
 
 > Share any feedback on the exercise itself.
 
-Love it, probably too much. You do a lot of the same things I do with my take home assessment.
+Love it, probably too much. You do a lot of the same things I do with my take home assessment. I spent ~5hr on this so it feels like a good size.
 
 Useful things to cover:
 
