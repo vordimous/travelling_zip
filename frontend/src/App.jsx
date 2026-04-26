@@ -1,4 +1,5 @@
 import { useEffect, useState } from "react";
+import FlightMap from "./FlightMap";
 
 const defaultConfig = {
   numZips: 10,
@@ -179,6 +180,8 @@ export default function App() {
         </form>
         {error ? <p className="error">{error}</p> : null}
       </section>
+
+      {snapshot ? <FlightMap snapshot={snapshot} /> : null}
 
       {snapshot ? (
         <div className="grid">
