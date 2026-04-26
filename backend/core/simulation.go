@@ -20,21 +20,32 @@ const (
 	SecondsPerDay          = 24 * 60 * 60
 	Emergency              = "Emergency"
 	Resupply               = "Resupply"
+
+	// EdgeWeightModelEuclidean is the default cost model for graph edges.
+	EdgeWeightModelEuclidean = "euclidean"
 )
 
 type SimulationConfig struct {
-	NumZips                int `json:"numZips"`
-	MaxPackagesPerZip      int `json:"maxPackagesPerZip"`
-	ZipSpeedMps            int `json:"zipSpeedMps"`
-	ZipMaxCumulativeRangeM int `json:"zipMaxCumulativeRangeM"`
+	NumZips                int    `json:"numZips"`
+	MaxPackagesPerZip      int    `json:"maxPackagesPerZip"`
+	ZipSpeedMps            int    `json:"zipSpeedMps"`
+	ZipMaxCumulativeRangeM int    `json:"zipMaxCumulativeRangeM"`
+	EdgeWeightModel        string `json:"edgeWeightModel"`
+	// EmergencyWaitThresholdSec, when > 0, triggers reserve borrowing for any
+	// Resupply order that has been queued for at least this many seconds even
+	// if its EoD risk has not yet fired. 0 disables the early trigger; only
+	// the strict EoD-deadline rule applies.
+	EmergencyWaitThresholdSec int `json:"emergencyWaitThresholdSec"`
 }
 
 func DefaultConfig() SimulationConfig {
 	return SimulationConfig{
-		NumZips:                NumZips,
-		MaxPackagesPerZip:      MaxPackagesPerZip,
-		ZipSpeedMps:            ZipSpeedMps,
-		ZipMaxCumulativeRangeM: ZipMaxCumulativeRangeM,
+		NumZips:                   NumZips,
+		MaxPackagesPerZip:         MaxPackagesPerZip,
+		ZipSpeedMps:               ZipSpeedMps,
+		ZipMaxCumulativeRangeM:    ZipMaxCumulativeRangeM,
+		EdgeWeightModel:           EdgeWeightModelEuclidean,
+		EmergencyWaitThresholdSec: 0,
 	}
 }
 
@@ -534,10 +545,46 @@ func ParseConfig(body []byte) (SimulationConfig, error) {
 		return SimulationConfig{}, err
 	}
 
+	parseOptionalInt := func(name string, defaultValue int) (int, error) {
+		rawValue, ok := payload.Config[name]
+		if !ok {
+			return defaultValue, nil
+		}
+		var value int
+		if err := json.Unmarshal(rawValue, &value); err != nil {
+			return 0, fmt.Errorf("config.%s must be a number", name)
+		}
+		return value, nil
+	}
+	parseOptionalString := func(name string, defaultValue string) (string, error) {
+		rawValue, ok := payload.Config[name]
+		if !ok {
+			return defaultValue, nil
+		}
+		var value string
+		if err := json.Unmarshal(rawValue, &value); err != nil {
+			return "", fmt.Errorf("config.%s must be a string", name)
+		}
+		return value, nil
+	}
+
+	defaults := DefaultConfig()
+	edgeWeightModel, err := parseOptionalString("edgeWeightModel", defaults.EdgeWeightModel)
+	if err != nil {
+		return SimulationConfig{}, err
+	}
+	emergencyWaitThresholdSec, err := parseOptionalInt(
+		"emergencyWaitThresholdSec", defaults.EmergencyWaitThresholdSec)
+	if err != nil {
+		return SimulationConfig{}, err
+	}
+
 	return SimulationConfig{
-		NumZips:                numZips,
-		MaxPackagesPerZip:      maxPackagesPerZip,
-		ZipSpeedMps:            zipSpeedMps,
-		ZipMaxCumulativeRangeM: zipMaxCumulativeRangeM,
+		NumZips:                   numZips,
+		MaxPackagesPerZip:         maxPackagesPerZip,
+		ZipSpeedMps:               zipSpeedMps,
+		ZipMaxCumulativeRangeM:    zipMaxCumulativeRangeM,
+		EdgeWeightModel:           edgeWeightModel,
+		EmergencyWaitThresholdSec: emergencyWaitThresholdSec,
 	}, nil
 }
