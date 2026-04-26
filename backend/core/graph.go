@@ -7,8 +7,7 @@ const NestKey = "__nest__"
 
 // EdgeWeight is the seam between the delivery graph and the cost model used by
 // the scheduler. The default implementation returns straight-line Euclidean
-// distance in meters; alternative implementations (Step 2a / C3) may layer in
-// real-world considerations such as terrain or wind.
+// distance in meters.
 //
 // Implementations must be symmetric (Weight(a,b) == Weight(b,a)) and should
 // return 0 when from == to.
@@ -31,8 +30,7 @@ func NewGraph(hospitals map[string]Hospital) *Graph {
 }
 
 // NewGraphWithEdgeWeight builds a graph with a pluggable EdgeWeight strategy.
-// Pass nil to fall back to Euclidean distance. The EdgeWeight seam (leaf C3)
-// is deferred to post-Step-2.
+// Pass nil to fall back to Euclidean distance.
 func NewGraphWithEdgeWeight(hospitals map[string]Hospital, edgeWeight EdgeWeight) *Graph {
 	nodes := make(map[string]Hospital, len(hospitals)+1)
 	nodes[NestKey] = Hospital{Name: NestKey}

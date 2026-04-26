@@ -31,21 +31,15 @@ type SimulationConfig struct {
 	ZipSpeedMps            int    `json:"zipSpeedMps"`
 	ZipMaxCumulativeRangeM int    `json:"zipMaxCumulativeRangeM"`
 	EdgeWeightModel        string `json:"edgeWeightModel"`
-	// EmergencyWaitThresholdSec, when > 0, triggers reserve borrowing for any
-	// Resupply order that has been queued for at least this many seconds even
-	// if its EoD risk has not yet fired. 0 disables the early trigger; only
-	// the strict EoD-deadline rule applies.
-	EmergencyWaitThresholdSec int `json:"emergencyWaitThresholdSec"`
 }
 
 func DefaultConfig() SimulationConfig {
 	return SimulationConfig{
-		NumZips:                   NumZips,
-		MaxPackagesPerZip:         MaxPackagesPerZip,
-		ZipSpeedMps:               ZipSpeedMps,
-		ZipMaxCumulativeRangeM:    ZipMaxCumulativeRangeM,
-		EdgeWeightModel:           EdgeWeightModelEuclidean,
-		EmergencyWaitThresholdSec: 0,
+		NumZips:                NumZips,
+		MaxPackagesPerZip:      MaxPackagesPerZip,
+		ZipSpeedMps:            ZipSpeedMps,
+		ZipMaxCumulativeRangeM: ZipMaxCumulativeRangeM,
+		EdgeWeightModel:        EdgeWeightModelEuclidean,
 	}
 }
 
@@ -89,13 +83,11 @@ type ZipScheduler struct {
 	maxPackagesPerZip      int
 	zipSpeedMps            int
 	zipMaxCumulativeRangeM int
-	unfulfilledOrders      []Order
+	unfulfilledOrders []Order
 	// zipReturnTimes holds the return-to-Nest seconds-since-midnight for every
 	// currently in-flight zip. Entries with t <= currentTime are reclaimed on
 	// the next availableZips call.
-	zipReturnTimes            []int
-	reservePolicy             ReservePolicy
-	emergencyWaitThresholdSec int
+	zipReturnTimes []int
 }
 
 func NewZipScheduler(
@@ -109,9 +101,7 @@ func NewZipScheduler(
 		maxPackagesPerZip:      config.MaxPackagesPerZip,
 		zipSpeedMps:            config.ZipSpeedMps,
 		zipMaxCumulativeRangeM: config.ZipMaxCumulativeRangeM,
-		unfulfilledOrders:         []Order{},
-		reservePolicy:             ReserveSoft,
-		emergencyWaitThresholdSec: config.EmergencyWaitThresholdSec,
+		unfulfilledOrders: []Order{},
 	}
 }
 
@@ -249,90 +239,9 @@ func (zipScheduler *ZipScheduler) markZipLaunched(returnTime int) {
 	zipScheduler.zipReturnTimes = append(zipScheduler.zipReturnTimes, returnTime)
 }
 
-// 80/20 fleet reserve rule
-//
-// The fleet is split into two pools whenever a launch decision is made:
-//
-//   - Resupply pool: ResupplyCapPercent of the fleet (default 80%). With the
-//     10-zip default this is 8 zips. Resupply orders may consume any of these
-//     without restriction.
-//   - Emergency reserve: the remaining fraction (default 20%, i.e. 2 zips on
-//     a 10-zip fleet). Always available to Emergency orders; off-limits to
-//     Resupply except under ReserveSoft when an order's EoD deadline is at
-//     risk (see resupplyAtRisk).
-//
-// Concretely the gate is `available > reserveSize`: a Resupply launch is
-// permitted only when, after consuming one zip, the reserve still has at
-// least reserveSize zips free for incoming Emergency orders. Emergencies
-// are never gated. Multi-stop flights may bundle Resupply orders alongside
-// an Emergency for free since the gate is checked once per launch.
-//
-// ResupplyCapPercent is currently a build-time constant; surfacing it
-// through SimulationConfig is left for a future iteration.
-const ResupplyCapPercent = 80
-
-// ReservePolicy selects how strictly the rule above is enforced.
-type ReservePolicy int
-
-const (
-	// ReserveNone disables the reserve entirely; Resupply launches greedily.
-	ReserveNone ReservePolicy = iota
-	// ReserveHard enforces the reserve strictly: a Resupply launch is rejected
-	// once doing so would dip into the reserve. Best emergency-delay numbers
-	// when the fleet has slack.
-	ReserveHard
-	// ReserveSoft enforces the same cap as Hard, but lets a Resupply order
-	// borrow the reserve when its EoD deadline is at risk (round-trip direct
-	// flight time exceeds seconds remaining in the day, OR the order has
-	// waited longer than EmergencyWaitThresholdSec when configured). This is
-	// the default — see resupplyAtRisk for the precise threshold.
-	ReserveSoft
-)
-
-func (zipScheduler *ZipScheduler) resupplyCap() int {
-	cap := (zipScheduler.numZips * ResupplyCapPercent) / 100
-	if cap < 1 && zipScheduler.numZips > 0 {
-		cap = 1
-	}
-	return cap
-}
-
-func (zipScheduler *ZipScheduler) reserveSize() int {
-	return zipScheduler.numZips - zipScheduler.resupplyCap()
-}
-
-// resupplyAtRisk reports whether the order's deadline is at risk of slipping
-// and should therefore be allowed to borrow the reserve under ReserveSoft.
-//
-// Two independent triggers (logical OR):
-//   - EoD risk: round-trip direct flight time > seconds remaining in the day.
-//     With the default config this only fires in the last ~90 minutes.
-//   - Stale wait: when EmergencyWaitThresholdSec > 0, an order that has been
-//     queued for at least that many seconds becomes at-risk regardless of EoD.
-//     This is the configurable knob (C4) that lets operators tune how
-//     aggressively the reserve gets borrowed.
-//
-// TODO: 2 * EdgeWeight(Nest, hospital) is the round-trip time if this order
-// flew alone. In practice it is delivered as part of a multi-stop flight, so
-// the actual time-to-deliver is shorter. The current value therefore
-// overestimates risk and triggers reserve borrowing slightly earlier than
-// strictly necessary — a conservative fail-safe. A more accurate computation
-// would amortize the cost across the planned route, but the planned route is
-// not known at this decision point. Leaving as-is; revisit post-Step-2.
-func (zipScheduler *ZipScheduler) resupplyAtRisk(currentTime int, order Order) bool {
-	if zipScheduler.emergencyWaitThresholdSec > 0 &&
-		currentTime-order.Time >= zipScheduler.emergencyWaitThresholdSec {
-		return true
-	}
-	roundTrip := 2 * zipScheduler.graph.EdgeWeight(NestKey, order.HospitalName)
-	flightSeconds := int(roundTrip / float64(zipScheduler.zipSpeedMps))
-	return flightSeconds > (SecondsPerDay - currentTime)
-}
-
 // LaunchFlights returns the list of flights to launch at currentTime. Pending
-// orders are considered Emergency-first; flights are built greedily under the
-// active reserve policy and the scheduler tracks zip availability so a zip
-// cannot be in two flights at once.
+// orders are considered Emergency-first; flights are built greedily and the
+// scheduler tracks zip availability so a zip cannot be in two flights at once.
 func (zipScheduler *ZipScheduler) LaunchFlights(currentTime int) []Flight {
 	flights := []Flight{}
 	available := zipScheduler.availableZips(currentTime)
@@ -341,29 +250,8 @@ func (zipScheduler *ZipScheduler) LaunchFlights(currentTime int) []Flight {
 	}
 
 	queue := zipScheduler.pendingByPriority()
-	reserve := zipScheduler.reserveSize()
-
-	canLaunchResupply := func(order Order) bool {
-		switch zipScheduler.reservePolicy {
-		case ReserveNone:
-			return true
-		case ReserveHard:
-			return available > reserve
-		case ReserveSoft:
-			if available > reserve {
-				return true
-			}
-			return zipScheduler.resupplyAtRisk(currentTime, order)
-		}
-		return true
-	}
 
 	for available > 0 && len(queue) > 0 {
-		head := queue[0]
-		if head.Priority == Resupply && !canLaunchResupply(head) {
-			break
-		}
-
 		flight, leftover := zipScheduler.buildFlight(currentTime, queue)
 		if len(flight.OrderIDs) == 0 {
 			break
@@ -574,17 +462,6 @@ func ParseConfig(body []byte) (SimulationConfig, error) {
 		return SimulationConfig{}, err
 	}
 
-	parseOptionalInt := func(name string, defaultValue int) (int, error) {
-		rawValue, ok := payload.Config[name]
-		if !ok {
-			return defaultValue, nil
-		}
-		var value int
-		if err := json.Unmarshal(rawValue, &value); err != nil {
-			return 0, fmt.Errorf("config.%s must be a number", name)
-		}
-		return value, nil
-	}
 	parseOptionalString := func(name string, defaultValue string) (string, error) {
 		rawValue, ok := payload.Config[name]
 		if !ok {
@@ -602,18 +479,12 @@ func ParseConfig(body []byte) (SimulationConfig, error) {
 	if err != nil {
 		return SimulationConfig{}, err
 	}
-	emergencyWaitThresholdSec, err := parseOptionalInt(
-		"emergencyWaitThresholdSec", defaults.EmergencyWaitThresholdSec)
-	if err != nil {
-		return SimulationConfig{}, err
-	}
 
 	return SimulationConfig{
-		NumZips:                   numZips,
-		MaxPackagesPerZip:         maxPackagesPerZip,
-		ZipSpeedMps:               zipSpeedMps,
-		ZipMaxCumulativeRangeM:    zipMaxCumulativeRangeM,
-		EdgeWeightModel:           edgeWeightModel,
-		EmergencyWaitThresholdSec: emergencyWaitThresholdSec,
+		NumZips:                numZips,
+		MaxPackagesPerZip:      maxPackagesPerZip,
+		ZipSpeedMps:            zipSpeedMps,
+		ZipMaxCumulativeRangeM: zipMaxCumulativeRangeM,
+		EdgeWeightModel:        edgeWeightModel,
 	}, nil
 }

@@ -9,7 +9,6 @@ import { z } from "zod";
 export const EDGE_WEIGHT_MODELS = ["euclidean"];
 
 const positiveInt = z.coerce.number().int().min(1);
-const nonNegativeInt = z.coerce.number().int().min(0);
 
 export const ConfigSchema = z.object({
   numZips: positiveInt,
@@ -17,7 +16,6 @@ export const ConfigSchema = z.object({
   zipSpeedMps: positiveInt,
   zipMaxCumulativeRangeM: positiveInt,
   edgeWeightModel: z.enum(EDGE_WEIGHT_MODELS),
-  emergencyWaitThresholdSec: nonNegativeInt,
 });
 
 export const configFields = [
@@ -26,7 +24,6 @@ export const configFields = [
   { key: "zipSpeedMps", label: "Zip speed (m/s)", kind: "int", min: 1, step: 1 },
   { key: "zipMaxCumulativeRangeM", label: "Max range (m)", kind: "int", min: 1, step: 1 },
   { key: "edgeWeightModel", label: "Edge weight model", kind: "enum", options: EDGE_WEIGHT_MODELS },
-  { key: "emergencyWaitThresholdSec", label: "Emergency wait threshold (s)", kind: "int", min: 0, step: 1 },
 ];
 
 export const defaultConfig = {
@@ -35,7 +32,6 @@ export const defaultConfig = {
   zipSpeedMps: 30,
   zipMaxCumulativeRangeM: 160000,
   edgeWeightModel: EDGE_WEIGHT_MODELS[0],
-  emergencyWaitThresholdSec: 0,
 };
 
 export function configToInputs(config) {
