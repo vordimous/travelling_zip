@@ -68,12 +68,12 @@ func (flight Flight) String() string {
 }
 
 type Snapshot struct {
-	Implementation   string           `json:"implementation"`
-	Config           SimulationConfig `json:"config"`
-	Hospitals        []Hospital       `json:"hospitals"`
-	Orders           []Order          `json:"orders"`
-	Flights          []Flight         `json:"flights"`
-	UnfulfilledOrders []Order         `json:"unfulfilledOrders"`
+	Implementation    string           `json:"implementation"`
+	Config            SimulationConfig `json:"config"`
+	Hospitals         []Hospital       `json:"hospitals"`
+	Orders            []Order          `json:"orders"`
+	Flights           []Flight         `json:"flights"`
+	UnfulfilledOrders []Order          `json:"unfulfilledOrders"`
 }
 
 type ZipScheduler struct {
@@ -83,7 +83,7 @@ type ZipScheduler struct {
 	maxPackagesPerZip      int
 	zipSpeedMps            int
 	zipMaxCumulativeRangeM int
-	unfulfilledOrders []Order
+	unfulfilledOrders      []Order
 	// zipReturnTimes holds the return-to-Nest seconds-since-midnight for every
 	// currently in-flight zip. Entries with t <= currentTime are reclaimed on
 	// the next availableZips call.
@@ -101,7 +101,7 @@ func NewZipScheduler(
 		maxPackagesPerZip:      config.MaxPackagesPerZip,
 		zipSpeedMps:            config.ZipSpeedMps,
 		zipMaxCumulativeRangeM: config.ZipMaxCumulativeRangeM,
-		unfulfilledOrders: []Order{},
+		unfulfilledOrders:      []Order{},
 	}
 }
 
@@ -412,11 +412,11 @@ func BuildSimulationSnapshot(config SimulationConfig) Snapshot {
 	})
 
 	return Snapshot{
-		Implementation:   "go",
-		Config:           config,
-		Hospitals:        hospitalList,
-		Orders:           orders,
-		Flights:          flights,
+		Implementation:    "go",
+		Config:            config,
+		Hospitals:         hospitalList,
+		Orders:            orders,
+		Flights:           flights,
 		UnfulfilledOrders: runner.zipScheduler.UnfulfilledOrders(),
 	}
 }
