@@ -81,3 +81,9 @@ The core of the solution is a graph that models the delivery network: the Nest a
 - distance data
 - terrain avoidance, static, periodic changes for cities
 - Weather avoidance, dynamic, active monitoring from weather stations, Storm avoidance, wind direction optimization
+- multiple edges to identify all possible routes between two places
+- in the real world euclidean coords would be replaces with full geo spacial route planning
+- Dev cleanup
+  - C2: build edges at the same time as the graph so each edge is pre calculated
+  - C2: Round trip calc is wrong and should be using the routeDistance function, 2x route is an overestimation, this should be fixed or commented that it isn't optimal and errors on the side of simple vs accurate. would always be larger than reality so it will still have the same effect to document potential risk.
+  - C1: Migrate the UI to something a bit better to look at. Title section should be smaller and be a normal header nav section pinned to the top. config settings should be updated in a modal. edit config and run simulator can be buttons in the header. There should be one summary seaching at the top of the page with each data table section's totals in it. the data table sections should be implemented using a generic component extracted from existing code. the new component should have a fixed height option.
