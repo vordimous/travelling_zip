@@ -53,7 +53,7 @@ graph TD
   C1a --> C2a
   C2a --> C3
   C1a --> C4
-  S2a --> T2A[Unit tests: each strategy + knob changes behavior observably]
+  S2a --> T2A[Unit tests: each strategy + knob changes behavior observably ✓]
 
   S2b --> V1[Snapshot already carries hospitals+flights; verify shape suffices]
   S2b --> V2[SVG/Canvas FlightMap component: Nest, hospitals, flight legs]
@@ -92,7 +92,7 @@ graph TD
 - [x] **C2c**: Add a TODO comment on `resupplyAtRisk` documenting that `2 * EdgeWeight(Nest, X)` overestimates the actual round-trip time when the order flies as part of a multi-stop, so the at-risk threshold triggers reserve borrowing slightly earlier than strictly necessary — a conservative fail-safe. Code change deferred to post-Step-2.
 - [~] **C3** (deferred): Alternative edge-weight model. Skipped for this challenge — not needed for Step 2 deliverables. The seam (C2a + EdgeWeightModel config field) is in place; `NewGraphWithEdgeWeight` carries an expansion-instruction comment that walks through how to add a model later. Revisit post-Step-2.
 - [x] **C4**: `EmergencyWaitThresholdSec` is now read by `NewZipScheduler` and added as a second OR-trigger inside `resupplyAtRisk`. When set > 0, a Resupply order that has been queued for at least the threshold seconds is treated as at-risk and may borrow the reserve under `ReserveSoft`. T2A will pin the observable behavior change.
-- [ ] **T2A**: Tests proving the C4 wait-threshold knob changes outputs observably (C3 strategy tests are deferred along with C3).
+- [x] **T2A**: Three tests pin the C4 knob: threshold=0 (default) blocks Resupply mid-day under ReserveSoft; threshold=200 with 300 s wait borrows the reserve; threshold=500 with 300 s wait still blocks. C3 strategy tests are deferred along with C3.
 
 ### Step 2b — Visualization
 

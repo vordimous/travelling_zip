@@ -135,6 +135,59 @@ func TestReserveSoftBlocksResupplyWhenNotAtRisk(t *testing.T) {
 	}
 }
 
+// fleetWithWaitThreshold builds a 5-zip-stressed fixture (4 in flight, 1 free)
+// running ReserveSoft with a configurable EmergencyWaitThresholdSec. Queues
+// one Resupply order received at receivedAt.
+func fleetWithWaitThreshold(t *testing.T, thresholdSec int, receivedAt int) *ZipScheduler {
+	t.Helper()
+	hospitals := map[string]Hospital{
+		"Near": {Name: "Near", NorthM: 1000, EastM: 0},
+	}
+	config := SimulationConfig{
+		NumZips:                   5,
+		MaxPackagesPerZip:         3,
+		ZipSpeedMps:               30,
+		ZipMaxCumulativeRangeM:    160000,
+		EdgeWeightModel:           EdgeWeightModelEuclidean,
+		EmergencyWaitThresholdSec: thresholdSec,
+	}
+	scheduler := NewZipScheduler(hospitals, config)
+	scheduler.reservePolicy = ReserveSoft
+	for i := 0; i < 4; i++ {
+		scheduler.markZipLaunched(SecondsPerDay)
+	}
+	scheduler.QueueOrder(Order{ID: "r1", Time: receivedAt, HospitalName: "Near", Priority: Resupply})
+	return scheduler
+}
+
+func TestEmergencyWaitThresholdDisabledByDefault(t *testing.T) {
+	// Threshold = 0 → only EoD risk fires; mid-day, ReserveSoft blocks.
+	scheduler := fleetWithWaitThreshold(t, 0, 100)
+	flights := scheduler.LaunchFlights(10000)
+	if len(flights) != 0 {
+		t.Errorf("threshold=0 mid-day launched %d flights, want 0", len(flights))
+	}
+}
+
+// With threshold=200 and the order queued for 300 s, the stale-wait trigger
+// fires before EoD and Soft borrows the reserve.
+func TestEmergencyWaitThresholdEnablesEarlyBorrow(t *testing.T) {
+	scheduler := fleetWithWaitThreshold(t, 200, 100)
+	flights := scheduler.LaunchFlights(400) // 300 s queued, mid-day
+	if len(flights) != 1 {
+		t.Errorf("threshold=200 with 300s wait launched %d flights, want 1", len(flights))
+	}
+}
+
+// Below the threshold, Soft still blocks even when an order has been waiting.
+func TestEmergencyWaitThresholdDoesNotFireBelowThreshold(t *testing.T) {
+	scheduler := fleetWithWaitThreshold(t, 500, 100)
+	flights := scheduler.LaunchFlights(400) // 300 s queued, threshold = 500
+	if len(flights) != 0 {
+		t.Errorf("threshold=500 with 300s wait launched %d flights, want 0", len(flights))
+	}
+}
+
 func TestResupplyAtRiskThreshold(t *testing.T) {
 	scheduler := fleetUnderReserveStress(t, ReserveSoft)
 	order := Order{HospitalName: "Near"}
