@@ -172,6 +172,14 @@ th {
   text-transform: uppercase;
 }
 
+.flight-map {
+  background: rgba(248, 250, 253, 0.6);
+  border-radius: 12px;
+  display: block;
+  height: 480px;
+  width: 100%;
+}
+
 @media (max-width: 720px) {
   .hero {
     flex-direction: column;
@@ -179,5 +187,9 @@ th {
 
   .hero-meta {
     align-items: flex-start;
+  }
+
+  .flight-map {
+    height: 360px;
   }
 }
