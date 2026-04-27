@@ -70,7 +70,7 @@ Useful things to cover:
 
 > List any known bugs, incomplete areas, or rough edges in your solution.
 
-No explicit bug that I have found. There is a lot of room for UI polish and I have only one edge weight option making the selector feel like it is missing something.
+No explicit bug that I have found. I think the Flight builder algorithm works well for the size of data in this challenge, however it needs to be optimized for larger datasets if there were +1k hospitals or +100k orders. There is also a lot of room for UI polish and I have only one edge weight option making the selector feel like it is missing something.
 
 ## Feedback on the Test
 
