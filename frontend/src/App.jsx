@@ -1,15 +1,12 @@
 import { useEffect, useState } from "react";
-
-const defaultConfig = {
-  numZips: 10,
-  maxPackagesPerZip: 3,
-  zipSpeedMps: 30,
-  zipMaxCumulativeRangeM: 160000,
-};
-
-const defaultConfigInputs = Object.fromEntries(
-  Object.entries(defaultConfig).map(([key, value]) => [key, String(value)])
-);
+import ConfigModal from "./ConfigModal";
+import DataTable from "./DataTable";
+import FlightMap from "./FlightMap";
+import {
+  configToInputs,
+  defaultConfig,
+  parseConfigInputs,
+} from "./configSchema";
 
 async function fetchSimulation(config) {
   const response = await fetch("/api/simulation", {
@@ -28,215 +25,195 @@ async function fetchSimulation(config) {
   return response.json();
 }
 
-function DataTable({ title, columns, rows, emptyMessage }) {
+function SummaryStat({ label, value }) {
   return (
-    <section className="panel">
-      <div className="panel-header">
-        <h2>{title}</h2>
-        <span>{rows.length}</span>
-      </div>
-      {rows.length === 0 ? (
-        <p className="empty">{emptyMessage}</p>
-      ) : (
-        <div className="table-wrap">
-          <table>
-            <thead>
-              <tr>
-                {columns.map((column) => (
-                  <th key={column.key}>{column.label}</th>
-                ))}
-              </tr>
-            </thead>
-            <tbody>
-              {rows.map((row, index) => (
-                <tr key={row.id ?? `${title}-${index}`}>
-                  {columns.map((column) => (
-                    <td key={column.key}>{row[column.key]}</td>
-                  ))}
-                </tr>
-              ))}
-            </tbody>
-          </table>
-        </div>
-      )}
-    </section>
+    <div className="summary-stat">
+      <span className="summary-label">{label}</span>
+      <span className="summary-value">{value}</span>
+    </div>
   );
 }
 
 export default function App() {
-  const [config, setConfig] = useState(defaultConfigInputs);
+  const [config, setConfig] = useState(() => configToInputs(defaultConfig));
   const [snapshot, setSnapshot] = useState(null);
   const [status, setStatus] = useState("idle");
   const [error, setError] = useState("");
+  const [fieldErrors, setFieldErrors] = useState(null);
+  const [modalOpen, setModalOpen] = useState(false);
+
+  const runSimulation = async (numericConfig) => {
+    setStatus("loading");
+    setError("");
+    try {
+      const nextSnapshot = await fetchSimulation(numericConfig);
+      setSnapshot(nextSnapshot);
+      setConfig(configToInputs(nextSnapshot.config));
+      setStatus("success");
+      return true;
+    } catch (nextError) {
+      setStatus("error");
+      setError(nextError.message);
+      return false;
+    }
+  };
 
   useEffect(() => {
     let active = true;
-
     setStatus("loading");
     setError("");
-
     fetchSimulation(defaultConfig)
       .then((nextSnapshot) => {
-        if (!active) {
-          return;
-        }
+        if (!active) return;
         setSnapshot(nextSnapshot);
-        setConfig(
-          Object.fromEntries(
-            Object.entries(nextSnapshot.config).map(([key, value]) => [
-              key,
-              String(value),
-            ])
-          )
-        );
+        setConfig(configToInputs(nextSnapshot.config));
         setStatus("success");
       })
       .catch((nextError) => {
-        if (!active) {
-          return;
-        }
+        if (!active) return;
         setStatus("error");
         setError(nextError.message);
       });
-
     return () => {
       active = false;
     };
   }, []);
 
-  const handleSubmit = async (event) => {
-    event.preventDefault();
-    setStatus("loading");
-    setError("");
+  const handleEditConfig = () => setModalOpen(true);
 
-    try {
-      const numericConfig = Object.fromEntries(
-        Object.entries(config).map(([key, value]) => [key, Number(value)])
-      );
-      const nextSnapshot = await fetchSimulation(numericConfig);
-      setSnapshot(nextSnapshot);
-      setConfig(
-        Object.fromEntries(
-          Object.entries(nextSnapshot.config).map(([key, value]) => [
-            key,
-            String(value),
-          ])
-        )
-      );
-      setStatus("success");
-    } catch (nextError) {
-      setStatus("error");
-      setError(nextError.message);
+  const submitConfig = async () => {
+    const { data, fieldErrors: nextFieldErrors } = parseConfigInputs(config);
+    if (!data) {
+      setFieldErrors(nextFieldErrors);
+      return false;
     }
+    setFieldErrors(null);
+    return runSimulation(data);
   };
 
-  const handleChange = (event) => {
+  const handleRunSimulation = () => {
+    submitConfig();
+  };
+
+  const handleConfigChange = (event) => {
     const { name, value } = event.target;
-    setConfig((current) => ({
-      ...current,
-      [name]: value,
-    }));
+    setConfig((current) => ({ ...current, [name]: value }));
+  };
+
+  const handleConfigSubmit = async (event) => {
+    event.preventDefault();
+    const ok = await submitConfig();
+    if (ok) setModalOpen(false);
   };
 
   return (
-    <main className="app-shell">
-      <section className="hero panel">
-        <div>
-          <p className="eyebrow">Starter Frontend</p>
-          <h1>Traveling Zip Simulator</h1>
-          <p className="lede">
-            A small React surface that talks to whichever backend
-            implementation is currently running on port 3001.
-          </p>
-        </div>
-        <div className="hero-meta">
+    <>
+      <header className="app-header">
+        <div className="app-header-title">
+          <h1>Traveling Zip</h1>
           <span className={`status-pill status-${status}`}>{status}</span>
           {snapshot ? (
             <span className="implementation">{snapshot.implementation}</span>
           ) : null}
         </div>
-      </section>
-
-      <section className="panel">
-        <div className="panel-header">
-          <h2>Simulation Controls</h2>
-          <span>POST /api/simulation</span>
+        <div className="app-header-actions">
+          <button type="button" onClick={handleEditConfig}>
+            Edit Config
+          </button>
+          <button type="button" onClick={handleRunSimulation}>
+            Run Simulation
+          </button>
         </div>
-        <form className="control-grid" onSubmit={handleSubmit}>
-          {Object.entries(config).map(([key, value]) => (
-            <label key={key}>
-              <span>{key}</span>
-              <input
-                min="0"
-                name={key}
-                onChange={handleChange}
-                type="number"
-                value={value}
-              />
-            </label>
-          ))}
-          <button type="submit">Run Simulation</button>
-        </form>
-        {error ? <p className="error">{error}</p> : null}
-      </section>
+      </header>
 
-      {snapshot ? (
-        <div className="grid">
-          <DataTable
-            columns={[
-              { key: "name", label: "Hospital" },
-              { key: "northM", label: "North (m)" },
-              { key: "eastM", label: "East (m)" },
-            ]}
-            emptyMessage="No hospitals loaded."
-            rows={snapshot.hospitals}
-            title="Hospitals"
-          />
-          <DataTable
-            columns={[
-              { key: "id", label: "ID" },
-              { key: "time", label: "Time" },
-              { key: "hospitalName", label: "Hospital" },
-              { key: "priority", label: "Priority" },
-            ]}
-            emptyMessage="No orders loaded."
-            rows={snapshot.orders}
-            title="Orders"
-          />
-          <DataTable
-            columns={[
-              { key: "launchTime", label: "Launch Time" },
-              { key: "hospitalNames", label: "Hospital Names" },
-              { key: "orderIds", label: "Order IDs" },
-            ]}
-            emptyMessage="No flights launched yet."
-            rows={snapshot.flights.map((flight) => ({
-              ...flight,
-              hospitalNames: flight.hospitalNames.join(" -> "),
-              orderIds: flight.orderIds.join(", "),
-            }))}
-            title="Flights"
-          />
-          <DataTable
-            columns={[
-              { key: "id", label: "ID" },
-              { key: "time", label: "Time" },
-              { key: "hospitalName", label: "Hospital" },
-              { key: "priority", label: "Priority" },
-            ]}
-            emptyMessage="No unfulfilled orders."
-            rows={snapshot.unfulfilledOrders}
-            title="Unfulfilled Orders"
-          />
-        </div>
-      ) : (
-        <section className="panel">
-          <p className="empty">
-            Start one backend on port 3001, then run the frontend and submit the
-            form.
-          </p>
-        </section>
-      )}
-    </main>
+      <main className="app-shell">
+        {error ? (
+          <section className="panel">
+            <p className="error">{error}</p>
+          </section>
+        ) : null}
+
+        {snapshot ? (
+          <section className="panel summary-bar">
+            <SummaryStat label="Hospitals" value={snapshot.hospitals.length} />
+            <SummaryStat label="Orders" value={snapshot.orders.length} />
+            <SummaryStat label="Flights" value={snapshot.flights.length} />
+            <SummaryStat
+              label="Unfulfilled"
+              value={snapshot.unfulfilledOrders.length}
+            />
+          </section>
+        ) : null}
+
+        {snapshot ? <FlightMap snapshot={snapshot} /> : null}
+
+        {snapshot ? (
+          <div className="grid">
+            <DataTable
+              columns={[
+                { key: "name", label: "Hospital" },
+                { key: "northM", label: "North (m)" },
+                { key: "eastM", label: "East (m)" },
+              ]}
+              emptyMessage="No hospitals loaded."
+              rows={snapshot.hospitals}
+              title="Hospitals"
+            />
+            <DataTable
+              columns={[
+                { key: "id", label: "ID" },
+                { key: "time", label: "Time" },
+                { key: "hospitalName", label: "Hospital" },
+                { key: "priority", label: "Priority" },
+              ]}
+              emptyMessage="No orders loaded."
+              rows={snapshot.orders}
+              title="Orders"
+            />
+            <DataTable
+              columns={[
+                { key: "launchTime", label: "Launch Time" },
+                { key: "hospitalNames", label: "Hospital Names" },
+                { key: "orderIds", label: "Order IDs" },
+              ]}
+              emptyMessage="No flights launched yet."
+              rows={snapshot.flights.map((flight) => ({
+                ...flight,
+                hospitalNames: flight.hospitalNames.join(" -> "),
+                orderIds: flight.orderIds.join(", "),
+              }))}
+              title="Flights"
+            />
+            <DataTable
+              columns={[
+                { key: "id", label: "ID" },
+                { key: "time", label: "Time" },
+                { key: "hospitalName", label: "Hospital" },
+                { key: "priority", label: "Priority" },
+              ]}
+              emptyMessage="No unfulfilled orders."
+              rows={snapshot.unfulfilledOrders}
+              title="Unfulfilled Orders"
+            />
+          </div>
+        ) : (
+          <section className="panel">
+            <p className="empty">
+              Start one backend on port 3001, then click Run Simulation.
+            </p>
+          </section>
+        )}
+      </main>
+
+      <ConfigModal
+        open={modalOpen}
+        config={config}
+        onChange={handleConfigChange}
+        onSubmit={handleConfigSubmit}
+        onClose={() => setModalOpen(false)}
+        error={error}
+        fieldErrors={fieldErrors}
+      />
+    </>
   );
 }

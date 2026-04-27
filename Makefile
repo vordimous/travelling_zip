@@ -25,6 +25,10 @@ vet-backend: ## Run go vet on backend
 test-backend: ## Run Go tests
 	cd backend && go test ./...
 
+.PHONY: test-verbose-backend
+test-verbose-backend: ## Run Go tests with verbose output (shows t.Log)
+	cd backend && go test -v ./...
+
 .PHONY: test-frontend
 test-frontend: ## Run frontend tests (Vitest)
 	cd frontend && npm test

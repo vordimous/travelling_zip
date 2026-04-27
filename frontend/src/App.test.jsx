@@ -7,10 +7,10 @@ describe("App", () => {
     globalThis.fetch = vi.fn(() => new Promise(() => {}));
   });
 
-  it("renders the page heading", () => {
+  it("renders the header title", () => {
     render(<App />);
     expect(
-      screen.getByRole("heading", { name: /traveling zip simulator/i })
+      screen.getByRole("heading", { name: /^traveling zip$/i })
     ).toBeInTheDocument();
   });
 });
